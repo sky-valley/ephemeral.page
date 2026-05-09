@@ -27,6 +27,8 @@ async function workersAiCompose(env: Env, input: ComposeInput, request: CreateEx
           "You compose small, accessible, mobile-friendly HTML5 pages for one human interaction.",
           "Return only compact JSON with keys: title, bodyHtml, css, script.",
           "The page must call window.ephemeral.submit(result) from script when the user submits.",
+          "After submit resolves, show a clear persistent end state that says the response was received and the human can close the page or return to what they were doing.",
+          "Disable or hide submit controls after success. The success state must be visible, accessible, and announced with role=status or equivalent focus management.",
           "Do not include external scripts, external stylesheets, backend calls, cookies, storage, or tracking."
         ].join(" ")
       },
@@ -116,6 +118,11 @@ function fixtureCompose(input: ComposeInput): PageComposition {
           <button type="submit">Submit response</button>
           <p id="form-status" role="status" aria-live="polite"></p>
         </form>
+        <section id="completion-state" class="completion-state" tabindex="-1" hidden>
+          <p class="completion-kicker">Response submitted</p>
+          <h2>You are done here.</h2>
+          <p>Your response was received. You can close this page and return to what you were doing.</p>
+        </section>
       </main>
     `,
     css: `
@@ -137,16 +144,24 @@ function fixtureCompose(input: ComposeInput): PageComposition {
       button { margin-top: 20px; border: 0; border-radius: 8px; padding: 12px 18px; font: inherit; font-weight: 800; color: white; background: #1f6f5c; cursor: pointer; }
       button[disabled] { opacity: 0.65; cursor: progress; }
       #form-status { min-height: 1.5em; font-weight: 700; }
+      .completion-state { margin-top: 32px; border: 1px solid #b7dacd; border-radius: 8px; padding: 22px; background: #eef8f3; color: #173c34; outline: none; }
+      .completion-state:focus { box-shadow: 0 0 0 3px rgba(31, 111, 92, 0.24); }
+      .completion-state[hidden] { display: none; }
+      .completion-kicker { margin: 0 0 8px; font-weight: 800; color: #1f6f5c; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0; }
+      .completion-state h2 { margin: 0 0 8px; font-size: 1.55rem; line-height: 1.15; }
+      .completion-state p:last-child { margin-bottom: 0; }
       @media (prefers-color-scheme: dark) {
         body { background: #151714; color: #eeeee9; }
         h1 { color: #ffffff; }
         .material { background: #20231f; border-color: #3c4339; }
         input, textarea { background: #10120f; color: #fff; border-color: #4a5247; }
+        .completion-state { background: #13251f; border-color: #2e6f5f; color: #edf8f4; }
       }
     `,
     script: `
       const form = document.getElementById("response-form");
       const status = document.getElementById("form-status");
+      const completion = document.getElementById("completion-state");
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const button = form.querySelector("button");
@@ -158,8 +173,10 @@ function fixtureCompose(input: ComposeInput): PageComposition {
             answer: String(data.get("answer") || ""),
             notes: String(data.get("notes") || "") || undefined
           });
-          status.textContent = "Submitted. Thank you.";
-          form.reset();
+          status.textContent = "Submitted. You can close this page.";
+          form.hidden = true;
+          completion.hidden = false;
+          completion.focus();
         } catch (error) {
           button.disabled = false;
           status.textContent = error && error.message ? error.message : "Could not submit.";

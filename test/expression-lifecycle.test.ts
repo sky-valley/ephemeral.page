@@ -114,6 +114,9 @@ describe("expression lifecycle", () => {
     expect(page.headers.get("content-security-policy")).toContain("connect-src 'self'");
     expect(html).toContain("window.ephemeral");
     expect(html).toContain("Ask whether the answer should be yes or no.");
+    expect(html).toContain("You can close this page and return to what you were doing.");
+    expect(html).toContain("ephemeral:submitted");
+    expect(html).toContain("completion-state");
   });
 
   it("returns pending before submission and submitted after submission", async () => {
@@ -151,6 +154,7 @@ describe("expression lifecycle", () => {
     expect(await second.json()).toMatchObject({ error: "Expression already submitted" });
     expect(pageAfterSubmit.status).toBe(200);
     expect(terminalHtml).toContain("Response submitted");
+    expect(terminalHtml).toContain("You can close this page and return to what you were doing.");
     expect(terminalHtml).not.toContain("response-form");
   });
 
