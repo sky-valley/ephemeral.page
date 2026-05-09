@@ -125,6 +125,8 @@ When `ephemeral.page` is ready:
 - Manual GitHub Deploy run `25608812721` passed on `main` commit `7043419`; it ran checks, skipped the placeholder "no token" step, and executed `wrangler deploy --env production`.
 - GitHub emitted a Node.js 20 action runtime deprecation annotation for `actions/checkout@v4`, `actions/setup-node@v4`, and `cloudflare/wrangler-action@v3`. The workflow itself runs project Node `22`; revisit action versions or set the runner override before GitHub's 2026-06-02 default change if the warning persists.
 - Remote smoke passed against workers.dev after the CI deploy. Smoke expression id: `expr_t5FA-AjyZLH-Chev9-`.
+- Pushed documentation commit `b779051` and confirmed automatic push workflows: CI run `25608847930` passed, Deploy run `25608847933` passed, and the Deploy job executed `Deploy Worker`.
+- Remote smoke passed again after the push-triggered deploy. Smoke expression id: `expr_xe3WbBASiDwdjxbTrJ`.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
