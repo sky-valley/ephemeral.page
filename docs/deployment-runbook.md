@@ -128,6 +128,17 @@ When `ephemeral.page` is ready:
 - Pushed documentation commit `b779051` and confirmed automatic push workflows: CI run `25608847930` passed, Deploy run `25608847933` passed, and the Deploy job executed `Deploy Worker`.
 - Remote smoke passed again after the push-triggered deploy. Smoke expression id: `expr_xe3WbBASiDwdjxbTrJ`.
 
+2026-05-09 agent-first public surface deploy:
+
+- Pushed commit `98258b9` with an agent-first root document, `/humans.html`, `/llms.txt`, `/llms-full.txt`, `/openapi.json`, `/.well-known/api-catalog`, `/robots.txt`, and `/sitemap.xml`.
+- CI run `25609864498` passed on `98258b9`.
+- Deploy run `25609864507` passed on `98258b9` and executed `Deploy Worker`.
+- The GitHub Node.js 20 action runtime deprecation annotation still appeared for `actions/checkout@v4`, `actions/setup-node@v4`, and `cloudflare/wrangler-action@v3`; this remains a follow-up before GitHub's 2026-06-02 runner default change.
+- Verified `https://ephemeral-page.noam-1a9.workers.dev/` serves `text/markdown` agent instructions with API catalog and OpenAPI `Link` headers.
+- Verified `https://ephemeral-page.noam-1a9.workers.dev/humans.html` serves the separate human page.
+- Verified `https://ephemeral-page.noam-1a9.workers.dev/.well-known/api-catalog` points to the deployed OpenAPI document.
+- Remote smoke passed after deploy. Smoke expression id: `expr_mLPou7Z7sdbOYORNyk`.
+
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
 ## Source Notes
