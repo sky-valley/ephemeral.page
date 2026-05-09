@@ -114,6 +114,9 @@ When `ephemeral.page` is ready:
 - Set GitHub secret `CLOUDFLARE_ACCOUNT_ID`.
 - The first GitHub CI run passed.
 - The first GitHub deploy run failed because `CLOUDFLARE_API_TOKEN` was not configured. The workflow was updated so future runs skip deploy cleanly until the scoped token is added.
+- Pushed follow-up commit `d6ae764` with the token-aware deploy workflow.
+- GitHub CI run `25608095037` passed on `d6ae764`.
+- GitHub Deploy run `25608095046` passed on `d6ae764`; it ran checks and skipped deployment because `CLOUDFLARE_API_TOKEN` is not configured yet.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
