@@ -1,0 +1,91 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ephemeral-page",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "vars": {
+    "PUBLIC_ORIGIN": "http://localhost:8787",
+    "RUNTIME_DRIVER": "local",
+    "COMPOSER": "fixture",
+    "WORKERS_AI_MODEL": "@cf/google/gemma-4-26b-a4b-it"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "EXPRESSIONS",
+        "class_name": "ExpressionObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ExpressionObject"]
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "EXPRESSION_ASSETS",
+      "bucket_name": "ephemeral-page-expression-assets"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "CALLBACK_QUEUE",
+        "queue": "ephemeral-page-callbacks"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "ephemeral-page-callbacks"
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true
+  },
+  "env": {
+    "production": {
+      "name": "ephemeral-page",
+      "vars": {
+        "PUBLIC_ORIGIN": "https://ephemeral-page.noam-1a9.workers.dev",
+        "RUNTIME_DRIVER": "durable-object",
+        "COMPOSER": "workers-ai",
+        "WORKERS_AI_MODEL": "@cf/google/gemma-4-26b-a4b-it"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "EXPRESSIONS",
+            "class_name": "ExpressionObject"
+          }
+        ]
+      },
+      "r2_buckets": [
+        {
+          "binding": "EXPRESSION_ASSETS",
+          "bucket_name": "ephemeral-page-expression-assets"
+        }
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "CALLBACK_QUEUE",
+            "queue": "ephemeral-page-callbacks"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "ephemeral-page-callbacks"
+          }
+        ]
+      },
+      "ai": {
+        "binding": "AI"
+      }
+    }
+  }
+}
