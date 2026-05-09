@@ -2,9 +2,20 @@ import { createCapability } from "./capabilities";
 import { composePage } from "./composer";
 import { parseDuration } from "./duration";
 import { ExpressionObject } from "./expressionObject";
-import { errorResponse, HttpError, json, parseJson, text } from "./http";
+import { errorResponse, HttpError, json, parseJson } from "./http";
 import { expressionId } from "./ids";
 import { mirrorMaterials } from "./materials";
+import {
+  agentHomeResponse,
+  apiCatalogResponse,
+  humansResponse,
+  llmsFullResponse,
+  llmsTxtResponse,
+  openApiResponse,
+  publicOrigin,
+  robotsResponse,
+  sitemapResponse
+} from "./publicDocs";
 import { validateCreateRequest } from "./validation";
 import type { CallbackAttempt, CreateExpressionRequest, Env, ExpressionState } from "./types";
 
@@ -29,9 +40,39 @@ export default {
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = trimSlashes(url.pathname).split("/");
+  const origin = publicOrigin(request, env.PUBLIC_ORIGIN);
+  const isRead = request.method === "GET" || request.method === "HEAD";
 
-  if (request.method === "GET" && url.pathname === "/") {
-    return text("ephemeral.page local control plane");
+  if (isRead && (url.pathname === "/" || url.pathname === "/AGENTS.md" || url.pathname === "/agents.md" || url.pathname === "/index.md")) {
+    return maybeHead(request, agentHomeResponse(origin));
+  }
+
+  if (isRead && (url.pathname === "/humans.html" || url.pathname === "/humans.md")) {
+    return maybeHead(request, humansResponse(request, origin));
+  }
+
+  if (isRead && url.pathname === "/llms.txt") {
+    return maybeHead(request, llmsTxtResponse(origin));
+  }
+
+  if (isRead && url.pathname === "/llms-full.txt") {
+    return maybeHead(request, llmsFullResponse(origin));
+  }
+
+  if (isRead && (url.pathname === "/openapi.json" || url.pathname === "/.well-known/service-desc/openapi.json")) {
+    return maybeHead(request, openApiResponse(origin));
+  }
+
+  if (isRead && url.pathname === "/.well-known/api-catalog") {
+    return maybeHead(request, apiCatalogResponse(origin));
+  }
+
+  if (isRead && url.pathname === "/robots.txt") {
+    return maybeHead(request, robotsResponse(origin));
+  }
+
+  if (isRead && url.pathname === "/sitemap.xml") {
+    return maybeHead(request, sitemapResponse(origin));
   }
 
   if (request.method === "POST" && url.pathname === "/api/expressions") {
@@ -116,7 +157,7 @@ async function createExpression(request: Request, env: Env): Promise<Response> {
     body: JSON.stringify({ state })
   }));
 
-  const origin = env.PUBLIC_ORIGIN || new URL(request.url).origin;
+  const origin = publicOrigin(request, env.PUBLIC_ORIGIN);
   return json(
     {
       id,
@@ -203,6 +244,17 @@ async function recordCallbackAttempt(env: Env, expressionId: string, attempt: Ca
 
 function trimSlashes(pathname: string): string {
   return pathname.replace(/^\/+|\/+$/g, "");
+}
+
+function maybeHead(request: Request, response: Response): Response {
+  if (request.method !== "HEAD") {
+    return response;
+  }
+  return new Response(null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
 }
 
 function bearerToken(request: Request): string | null {

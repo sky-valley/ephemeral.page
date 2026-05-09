@@ -5,6 +5,92 @@ import type { CreateExpressionResponse, ResultEnvelope } from "../src/types";
 const ORIGIN = "http://localhost:8787";
 
 describe("expression lifecycle", () => {
+  it("serves an agent-first Markdown home at the root", async () => {
+    const response = await SELF.fetch(`${ORIGIN}/`);
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/markdown");
+    expect(response.headers.get("link")).toContain("/.well-known/api-catalog");
+    expect(body).toContain("# ephemeral.page AGENTS.md");
+    expect(body).toContain("Humans should use");
+    expect(body).toContain("POST /api/expressions");
+    expect(body).toContain("Headless human submission");
+    expect(body).toContain("Complete headless smoke");
+    expect(body).toContain("The final path segment is the `view_token`");
+    expect(body).toContain("not server-side validation");
+    expect(body).toContain("After your first successful surface");
+  });
+
+  it("serves agent discovery documents", async () => {
+    const llms = await SELF.fetch(`${ORIGIN}/llms.txt`);
+    const llmsBody = await llms.text();
+    const full = await SELF.fetch(`${ORIGIN}/llms-full.txt`);
+    const fullBody = await full.text();
+
+    expect(llms.status).toBe(200);
+    expect(llms.headers.get("content-type")).toContain("text/markdown");
+    expect(llmsBody).toContain("# ephemeral.page");
+    expect(llmsBody).toContain("[OpenAPI]");
+    expect(fullBody).toContain("# ephemeral.page AGENTS.md");
+    expect(fullBody).toContain("# API summary");
+  });
+
+  it("serves the human page separately from the agent home", async () => {
+    const html = await SELF.fetch(`${ORIGIN}/humans.html`);
+    const htmlBody = await html.text();
+    const markdown = await SELF.fetch(`${ORIGIN}/humans.html`, {
+      headers: { accept: "text/markdown" }
+    });
+    const markdownBody = await markdown.text();
+
+    expect(html.status).toBe(200);
+    expect(html.headers.get("content-type")).toContain("text/html");
+    expect(htmlBody).toContain("Temporary pages for one human response.");
+    expect(htmlBody).not.toContain("# ephemeral.page AGENTS.md");
+    expect(markdown.headers.get("content-type")).toContain("text/markdown");
+    expect(markdownBody).toContain("# ephemeral.page");
+    expect(markdownBody).toContain("ephemeral.page gives software agents");
+  });
+
+  it("serves machine-readable API discovery", async () => {
+    const openApi = await SELF.fetch(`${ORIGIN}/openapi.json`);
+    const openApiBody = await openApi.json<Record<string, unknown>>();
+    const catalog = await SELF.fetch(`${ORIGIN}/.well-known/api-catalog`);
+    const catalogBody = await catalog.json<{ linkset: Array<Record<string, unknown>> }>();
+    const catalogHead = await SELF.fetch(`${ORIGIN}/.well-known/api-catalog`, { method: "HEAD" });
+
+    expect(openApi.status).toBe(200);
+    expect(openApi.headers.get("content-type")).toContain("application/vnd.oai.openapi+json");
+    expect(openApiBody).toMatchObject({ openapi: "3.1.0" });
+    expect(catalog.status).toBe(200);
+    expect(catalog.headers.get("content-type")).toContain("application/linkset+json");
+    expect(catalog.headers.get("link")).toContain('rel="api-catalog"');
+    expect(catalogBody.linkset[0].item).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: `${ORIGIN}/openapi.json`
+        })
+      ])
+    );
+    expect(catalogHead.status).toBe(200);
+    expect(await catalogHead.text()).toBe("");
+  });
+
+  it("serves crawler hints and a sitemap", async () => {
+    const robots = await SELF.fetch(`${ORIGIN}/robots.txt`);
+    const robotsBody = await robots.text();
+    const sitemap = await SELF.fetch(`${ORIGIN}/sitemap.xml`);
+    const sitemapBody = await sitemap.text();
+
+    expect(robots.status).toBe(200);
+    expect(robotsBody).toContain("Content-Signal: ai-train=no, search=yes, ai-input=yes");
+    expect(robotsBody).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`);
+    expect(sitemap.status).toBe(200);
+    expect(sitemap.headers.get("content-type")).toContain("application/xml");
+    expect(sitemapBody).toContain(`<loc>${ORIGIN}/humans.html</loc>`);
+  });
+
   it("creates an expression and returns capability URLs", async () => {
     const response = await createExpression();
     expect(response.status).toBe(201);

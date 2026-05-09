@@ -46,6 +46,15 @@ Open the returned `url`, submit the page, then poll the returned `result_url`.
 
 ## API
 
+The public root of the service is intentionally agent-first:
+
+- `/` serves AGENTS.md-style Markdown instructions for a cold agent.
+- `/humans.html` serves the human explanation.
+- `/llms.txt` and `/llms-full.txt` serve LLM-friendly context.
+- `/openapi.json` and `/.well-known/api-catalog` expose the API for machine discovery.
+
+The research and rationale are recorded in [docs/agent-readiness-research.md](docs/agent-readiness-research.md). The headless onboarding evidence is recorded in [docs/agent-onboarding-evals/2026-05-09-headless-codex-claude.md](docs/agent-onboarding-evals/2026-05-09-headless-codex-claude.md).
+
 ### `POST /api/expressions`
 
 Creates one expression.
