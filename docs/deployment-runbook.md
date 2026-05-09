@@ -59,7 +59,7 @@ The R2 and Queue create commands are idempotent in spirit but not in exit code. 
 The repo uses GitHub Actions because it is explicit, portable, and easy for future agents to inspect from the repository.
 
 - `.github/workflows/ci.yml` runs `npm run check` on PRs and pushes to `main`.
-- `.github/workflows/deploy.yml` runs `npm run check`, then `wrangler deploy --env production` on pushes to `main` and manual dispatches.
+- `.github/workflows/deploy.yml` runs `npm run check`, then `wrangler deploy --env production` on pushes to `main` and manual dispatches when `CLOUDFLARE_API_TOKEN` exists. Until that token is configured, it logs a clear skip after the build check.
 
 Required GitHub repository secrets:
 
@@ -67,6 +67,13 @@ Required GitHub repository secrets:
 - `CLOUDFLARE_API_TOKEN`: a Cloudflare user API token scoped to the Sky Valley Ambient Computing account with the Cloudflare "Edit Cloudflare Workers" policy.
 
 Never commit Cloudflare API tokens. Cloudflare's GitHub Actions docs explicitly call for secrets, and warn not to store `CLOUDFLARE_API_TOKEN` in the repository.
+
+After adding `CLOUDFLARE_API_TOKEN`, run the deploy workflow manually once:
+
+```sh
+gh workflow run deploy.yml --repo sky-valley/ephemeral.page
+gh run list --repo sky-valley/ephemeral.page --workflow Deploy --limit 3
+```
 
 Workers Builds is a reasonable later alternative. Cloudflare's Workers Builds can listen to a Git repo and run `npx wrangler deploy`, but first setup depends on the Cloudflare/GitHub connection and currently uses user tokens for build auth. For this bootstrap, GitHub Actions keeps all CI/CD wiring visible in git.
 
@@ -103,6 +110,10 @@ When `ephemeral.page` is ready:
 - Deployment version ID: `5551adae-2182-41f2-93c1-8d18bb6fb8d1`.
 - Remote smoke passed against workers.dev. Smoke expression id: `expr_H-V7G8UsCf10nBIFiy`.
 - The first remote create call took tens of seconds because production composition uses Workers AI/Gemma 4. Keep an eye on create latency and add an explicit composer timeout/fallback if this feels bad in usage.
+- Created public GitHub repo `sky-valley/ephemeral.page` and pushed initial commit `e8bb53e`.
+- Set GitHub secret `CLOUDFLARE_ACCOUNT_ID`.
+- The first GitHub CI run passed.
+- The first GitHub deploy run failed because `CLOUDFLARE_API_TOKEN` was not configured. The workflow was updated so future runs skip deploy cleanly until the scoped token is added.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
