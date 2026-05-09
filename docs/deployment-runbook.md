@@ -64,7 +64,7 @@ The repo uses GitHub Actions because it is explicit, portable, and easy for futu
 Required GitHub repository secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`: `1a935388be529ecd78ebce737183a551`
-- `CLOUDFLARE_API_TOKEN`: a Cloudflare user API token scoped to the Sky Valley Ambient Computing account with the Cloudflare "Edit Cloudflare Workers" policy.
+- `CLOUDFLARE_API_TOKEN`: a Cloudflare user API token scoped to the Sky Valley Ambient Computing account. Select `Edit` for Workers Scripts, Workers R2 Storage, Queues, and Workers AI, plus `Read` for Account Settings. Cloudflare's review screen labels the selected `Edit` permissions as `Write`.
 
 Never commit Cloudflare API tokens. Cloudflare's GitHub Actions docs explicitly call for secrets, and warn not to store `CLOUDFLARE_API_TOKEN` in the repository.
 
@@ -117,6 +117,14 @@ When `ephemeral.page` is ready:
 - Pushed follow-up commit `d6ae764` with the token-aware deploy workflow.
 - GitHub CI run `25608095037` passed on `d6ae764`.
 - GitHub Deploy run `25608095046` passed on `d6ae764`; it ran checks and skipped deployment because `CLOUDFLARE_API_TOKEN` is not configured yet.
+
+2026-05-09 CI deploy activation:
+
+- Created Cloudflare API token `ephemeral-page-github-actions` with account-scoped permissions: `Workers Scripts:Write`, `Workers R2 Storage:Write`, `Queues:Write`, `Workers AI:Write`, and `Account Settings:Read`.
+- Set GitHub secret `CLOUDFLARE_API_TOKEN` for `sky-valley/ephemeral.page`. The token value was not written to repository files.
+- Manual GitHub Deploy run `25608812721` passed on `main` commit `7043419`; it ran checks, skipped the placeholder "no token" step, and executed `wrangler deploy --env production`.
+- GitHub emitted a Node.js 20 action runtime deprecation annotation for `actions/checkout@v4`, `actions/setup-node@v4`, and `cloudflare/wrangler-action@v3`. The workflow itself runs project Node `22`; revisit action versions or set the runner override before GitHub's 2026-06-02 default change if the warning persists.
+- Remote smoke passed against workers.dev after the CI deploy. Smoke expression id: `expr_t5FA-AjyZLH-Chev9-`.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
