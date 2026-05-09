@@ -76,16 +76,6 @@ export function apiCatalogResponse(origin: string): Response {
   });
 }
 
-export function ogImageResponse(): Response {
-  return new Response(ogImageSvg(), {
-    headers: new Headers({
-      "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "public, max-age=86400",
-      "x-content-type-options": "nosniff"
-    })
-  });
-}
-
 export function robotsResponse(origin: string): Response {
   return textDocument([
     "# ephemeral.page is intended to be readable by agents at inference time.",
@@ -458,7 +448,8 @@ function humanHtml(origin: string): string {
   const markdownUrl = `${origin}/humans.md`;
   const canonicalUrl = `${origin}/humans.html`;
   const agentUrl = `${origin}/`;
-  const ogImageUrl = `${origin}/og-image.svg`;
+  const ogImageUrl = `${origin}/og-image.png`;
+  const ogSquareImageUrl = `${origin}/og-square.png`;
   return `<!doctype html>
 <!-- AGENT: This is the human page. Prefer ${origin}/ for agent instructions, or request ${markdownUrl}. -->
 <html lang="en">
@@ -482,9 +473,15 @@ function humanHtml(origin: string): string {
   <meta property="og:url" content="${canonicalUrl}" />
   <meta property="og:image" content="${ogImageUrl}" />
   <meta property="og:image:secure_url" content="${ogImageUrl}" />
-  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${escapeHtml(HUMAN_OG_ALT)}" />
+  <meta property="og:image" content="${ogSquareImageUrl}" />
+  <meta property="og:image:secure_url" content="${ogSquareImageUrl}" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="1200" />
   <meta property="og:image:alt" content="${escapeHtml(HUMAN_OG_ALT)}" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${escapeHtml(HUMAN_PAGE_TITLE)}" />
@@ -586,23 +583,6 @@ function structuredDataJson(origin: string): string {
       availability: "https://schema.org/InStock"
     }
   }).replaceAll("<", "\\u003c");
-}
-
-function ogImageSvg(): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">ephemeral.page</title>
-  <desc id="desc">${escapeHtml(HUMAN_OG_ALT)}</desc>
-  <rect width="1200" height="630" fill="#f8f7f1"/>
-  <path d="M0 0h1200v630H0z" fill="#f8f7f1"/>
-  <path d="M87 120h1026v390H87z" fill="#fffdf8" stroke="#d8d4c9" stroke-width="2"/>
-  <path d="M87 120h1026v7H87z" fill="#28645a"/>
-  <text x="132" y="186" fill="#28645a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="28" font-weight="700">ephemeral.page</text>
-  <text x="132" y="290" fill="#181a17" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-weight="700">Temporary pages</text>
-  <text x="132" y="374" fill="#181a17" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-weight="700">for one human response.</text>
-  <text x="136" y="458" fill="#45483f" font-family="Inter, Arial, sans-serif" font-size="31">Agents ask. People answer. The page disappears.</text>
-  <circle cx="1028" cy="186" r="32" fill="#28645a"/>
-  <path d="M1013 186l11 11 22-28" fill="none" stroke="#f8f7f1" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
 }
 
 function openApi(origin: string): Record<string, unknown> {

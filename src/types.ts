@@ -2,6 +2,7 @@ export interface Env {
   EXPRESSIONS: DurableObjectNamespace;
   EXPRESSION_ASSETS: R2Bucket;
   CALLBACK_QUEUE: Queue<CallbackMessage>;
+  ASSETS?: Fetcher;
   AI?: Ai;
   PUBLIC_ORIGIN?: string;
   RUNTIME_DRIVER?: string;

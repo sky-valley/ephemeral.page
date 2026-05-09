@@ -12,7 +12,6 @@ import {
   humansResponse,
   llmsFullResponse,
   llmsTxtResponse,
-  ogImageResponse,
   openApiResponse,
   publicOrigin,
   robotsResponse,
@@ -57,8 +56,8 @@ async function route(request: Request, env: Env): Promise<Response> {
     return maybeHead(request, humansResponse(request, origin));
   }
 
-  if (isRead && url.pathname === "/og-image.svg") {
-    return maybeHead(request, ogImageResponse());
+  if (isRead && (url.pathname === "/og-image.png" || url.pathname === "/og-square.png")) {
+    return maybeHead(request, await staticAssetResponse(request, env));
   }
 
   if (isRead && url.pathname === "/llms.txt") {
@@ -250,6 +249,24 @@ async function recordCallbackAttempt(env: Env, expressionId: string, attempt: Ca
       body: JSON.stringify(attempt)
     })
   );
+}
+
+async function staticAssetResponse(request: Request, env: Env): Promise<Response> {
+  if (!env.ASSETS) {
+    return json({ error: "Not found" }, { status: 404 });
+  }
+  const response = await env.ASSETS.fetch(request);
+  if (response.status !== 200) {
+    return response;
+  }
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "public, max-age=86400");
+  headers.set("x-content-type-options", "nosniff");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
 }
 
 function trimSlashes(pathname: string): string {
