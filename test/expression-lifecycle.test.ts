@@ -47,10 +47,33 @@ describe("expression lifecycle", () => {
     expect(html.status).toBe(200);
     expect(html.headers.get("content-type")).toContain("text/html");
     expect(htmlBody).toContain("Temporary pages for one human response.");
+    expect(htmlBody).toContain("<title>ephemeral.page - temporary pages for agent-to-human moments</title>");
+    expect(htmlBody).toContain('property="og:title"');
+    expect(htmlBody).toContain('property="og:image"');
+    expect(htmlBody).toContain('name="twitter:card" content="summary_large_image"');
+    expect(htmlBody).toContain('type="application/ld+json"');
+    expect(htmlBody).toContain('"@type":"SoftwareApplication"');
     expect(htmlBody).not.toContain("# ephemeral.page AGENTS.md");
     expect(markdown.headers.get("content-type")).toContain("text/markdown");
     expect(markdownBody).toContain("# ephemeral.page");
     expect(markdownBody).toContain("ephemeral.page gives software agents");
+  });
+
+  it("redirects the clean human URL to the canonical human page and serves the social image", async () => {
+    const redirect = await SELF.fetch(`${ORIGIN}/humans`, { redirect: "manual" });
+    const redirectHead = await SELF.fetch(`${ORIGIN}/humans`, { method: "HEAD", redirect: "manual" });
+    const image = await SELF.fetch(`${ORIGIN}/og-image.svg`);
+    const imageBody = await image.text();
+
+    expect(redirect.status).toBe(301);
+    expect(redirect.headers.get("location")).toBe(`${ORIGIN}/humans.html`);
+    expect(redirect.headers.get("link")).toContain('rel="canonical"');
+    expect(redirectHead.status).toBe(301);
+    expect(await redirectHead.text()).toBe("");
+    expect(image.status).toBe(200);
+    expect(image.headers.get("content-type")).toContain("image/svg+xml");
+    expect(imageBody).toContain("Temporary pages");
+    expect(imageBody).toContain("Agents ask. People answer.");
   });
 
   it("serves machine-readable API discovery", async () => {
@@ -85,10 +108,12 @@ describe("expression lifecycle", () => {
 
     expect(robots.status).toBe(200);
     expect(robotsBody).toContain("Content-Signal: ai-train=no, search=yes, ai-input=yes");
+    expect(robotsBody).toContain("Allow: /humans.html");
     expect(robotsBody).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`);
     expect(sitemap.status).toBe(200);
     expect(sitemap.headers.get("content-type")).toContain("application/xml");
     expect(sitemapBody).toContain(`<loc>${ORIGIN}/humans.html</loc>`);
+    expect(sitemapBody).toContain("<priority>1.0</priority>");
   });
 
   it("creates an expression and returns capability URLs", async () => {

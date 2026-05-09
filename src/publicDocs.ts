@@ -2,6 +2,9 @@ import { escapeHtml } from "./escape";
 import { noStoreHeaders } from "./http";
 
 const UPDATED_AT = "2026-05-09";
+const HUMAN_PAGE_TITLE = "ephemeral.page - temporary pages for agent-to-human moments";
+const HUMAN_PAGE_DESCRIPTION = "Agents create a small public page, ask a person for one focused response, capture it, and move on.";
+const HUMAN_OG_ALT = "ephemeral.page turns one focused agent question into a temporary public web page for a human response.";
 
 export function publicOrigin(request: Request, configuredOrigin?: string): string {
   const requestOrigin = new URL(request.url).origin;
@@ -34,11 +37,21 @@ export function humansResponse(request: Request, origin: string): Response {
         "default-src 'none'",
         "base-uri 'none'",
         "frame-ancestors 'none'",
+        "script-src 'unsafe-inline'",
         "style-src 'unsafe-inline'",
         "img-src 'self' data:"
       ].join("; ")
     })
   });
+}
+
+export function humansRedirectResponse(origin: string): Response {
+  const headers = new Headers({
+    "location": `${origin}/humans.html`,
+    "cache-control": "public, max-age=3600",
+    "link": `<${origin}/humans.html>; rel="canonical"`
+  });
+  return new Response(null, { status: 301, headers });
 }
 
 export function llmsTxtResponse(origin: string): Response {
@@ -63,12 +76,23 @@ export function apiCatalogResponse(origin: string): Response {
   });
 }
 
+export function ogImageResponse(): Response {
+  return new Response(ogImageSvg(), {
+    headers: new Headers({
+      "content-type": "image/svg+xml; charset=utf-8",
+      "cache-control": "public, max-age=86400",
+      "x-content-type-options": "nosniff"
+    })
+  });
+}
+
 export function robotsResponse(origin: string): Response {
   return textDocument([
     "# ephemeral.page is intended to be readable by agents at inference time.",
     "# Please use /, /llms.txt, /llms-full.txt, and /.well-known/api-catalog before scraping HTML.",
     "User-agent: *",
     "Allow: /",
+    "Allow: /humans.html",
     "Content-Signal: ai-train=no, search=yes, ai-input=yes",
     `Sitemap: ${origin}/sitemap.xml`,
     ""
@@ -76,10 +100,17 @@ export function robotsResponse(origin: string): Response {
 }
 
 export function sitemapResponse(origin: string): Response {
-  const urls = ["/", "/humans.html", "/llms.txt", "/llms-full.txt", "/openapi.json", "/.well-known/api-catalog"];
+  const urls = [
+    { path: "/humans.html", changefreq: "weekly", priority: "1.0" },
+    { path: "/", changefreq: "weekly", priority: "0.9" },
+    { path: "/llms.txt", changefreq: "weekly", priority: "0.6" },
+    { path: "/llms-full.txt", changefreq: "weekly", priority: "0.6" },
+    { path: "/openapi.json", changefreq: "weekly", priority: "0.5" },
+    { path: "/.well-known/api-catalog", changefreq: "weekly", priority: "0.5" }
+  ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((path) => `  <url><loc>${escapeXml(`${origin}${path}`)}</loc><lastmod>${UPDATED_AT}</lastmod></url>`).join("\n")}
+${urls.map((url) => `  <url><loc>${escapeXml(`${origin}${url.path}`)}</loc><lastmod>${UPDATED_AT}</lastmod><changefreq>${url.changefreq}</changefreq><priority>${url.priority}</priority></url>`).join("\n")}
 </urlset>
 `;
   return new Response(body, {
@@ -425,16 +456,42 @@ Agent documentation is available at [${origin}/](${origin}/). Source code is at 
 
 function humanHtml(origin: string): string {
   const markdownUrl = `${origin}/humans.md`;
+  const canonicalUrl = `${origin}/humans.html`;
+  const agentUrl = `${origin}/`;
+  const ogImageUrl = `${origin}/og-image.svg`;
   return `<!doctype html>
 <!-- AGENT: This is the human page. Prefer ${origin}/ for agent instructions, or request ${markdownUrl}. -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ephemeral.page</title>
-  <meta name="description" content="Temporary public web surfaces for one focused human response." />
-  <link rel="canonical" href="${origin}/humans.html" />
+  <title>${escapeHtml(HUMAN_PAGE_TITLE)}</title>
+  <meta name="description" content="${escapeHtml(HUMAN_PAGE_DESCRIPTION)}" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="application-name" content="ephemeral.page" />
+  <meta name="theme-color" content="#f8f7f1" />
+  <meta name="keywords" content="ephemeral.page, agent UI, human in the loop, temporary web pages, agent workflows, public web surfaces" />
+  <link rel="canonical" href="${canonicalUrl}" />
   <link rel="alternate" type="text/markdown" href="${markdownUrl}" />
+  <link rel="alternate" type="text/markdown" href="${agentUrl}" title="Agent home" />
+  <link rel="image_src" href="${ogImageUrl}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="ephemeral.page" />
+  <meta property="og:title" content="${escapeHtml(HUMAN_PAGE_TITLE)}" />
+  <meta property="og:description" content="${escapeHtml(HUMAN_PAGE_DESCRIPTION)}" />
+  <meta property="og:url" content="${canonicalUrl}" />
+  <meta property="og:image" content="${ogImageUrl}" />
+  <meta property="og:image:secure_url" content="${ogImageUrl}" />
+  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${escapeHtml(HUMAN_OG_ALT)}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${escapeHtml(HUMAN_PAGE_TITLE)}" />
+  <meta name="twitter:description" content="${escapeHtml(HUMAN_PAGE_DESCRIPTION)}" />
+  <meta name="twitter:image" content="${ogImageUrl}" />
+  <meta name="twitter:image:alt" content="${escapeHtml(HUMAN_OG_ALT)}" />
+  <script type="application/ld+json">${structuredDataJson(origin)}</script>
   <style>
     :root {
       color-scheme: light;
@@ -501,6 +558,51 @@ function humanHtml(origin: string): string {
   </main>
 </body>
 </html>`;
+}
+
+function structuredDataJson(origin: string): string {
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "ephemeral.page",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Web",
+    url: `${origin}/humans.html`,
+    description: HUMAN_PAGE_DESCRIPTION,
+    creator: {
+      "@type": "Organization",
+      name: "Sky Valley"
+    },
+    codeRepository: "https://github.com/sky-valley/ephemeral.page",
+    softwareHelp: {
+      "@type": "CreativeWork",
+      name: "ephemeral.page agent home",
+      url: origin
+    },
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock"
+    }
+  }).replaceAll("<", "\\u003c");
+}
+
+function ogImageSvg(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">ephemeral.page</title>
+  <desc id="desc">${escapeHtml(HUMAN_OG_ALT)}</desc>
+  <rect width="1200" height="630" fill="#f8f7f1"/>
+  <path d="M0 0h1200v630H0z" fill="#f8f7f1"/>
+  <path d="M87 120h1026v390H87z" fill="#fffdf8" stroke="#d8d4c9" stroke-width="2"/>
+  <path d="M87 120h1026v7H87z" fill="#28645a"/>
+  <text x="132" y="186" fill="#28645a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="28" font-weight="700">ephemeral.page</text>
+  <text x="132" y="290" fill="#181a17" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-weight="700">Temporary pages</text>
+  <text x="132" y="374" fill="#181a17" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-weight="700">for one human response.</text>
+  <text x="136" y="458" fill="#45483f" font-family="Inter, Arial, sans-serif" font-size="31">Agents ask. People answer. The page disappears.</text>
+  <circle cx="1028" cy="186" r="32" fill="#28645a"/>
+  <path d="M1013 186l11 11 22-28" fill="none" stroke="#f8f7f1" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
 }
 
 function openApi(origin: string): Record<string, unknown> {

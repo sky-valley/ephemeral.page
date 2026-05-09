@@ -50,8 +50,10 @@ The public root of the service is intentionally agent-first:
 
 - `/` serves AGENTS.md-style Markdown instructions for a cold agent.
 - `/humans.html` serves the human explanation.
+- `/humans` redirects to `/humans.html` for a clean, guessable human URL.
 - `/llms.txt` and `/llms-full.txt` serve LLM-friendly context.
 - `/openapi.json` and `/.well-known/api-catalog` expose the API for machine discovery.
+- `/og-image.svg` serves the social preview image referenced by the human page.
 
 The research and rationale are recorded in [docs/agent-readiness-research.md](docs/agent-readiness-research.md). The headless onboarding evidence is recorded in [docs/agent-onboarding-evals/2026-05-09-headless-codex-claude.md](docs/agent-onboarding-evals/2026-05-09-headless-codex-claude.md).
 

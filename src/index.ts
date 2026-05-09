@@ -8,9 +8,11 @@ import { mirrorMaterials } from "./materials";
 import {
   agentHomeResponse,
   apiCatalogResponse,
+  humansRedirectResponse,
   humansResponse,
   llmsFullResponse,
   llmsTxtResponse,
+  ogImageResponse,
   openApiResponse,
   publicOrigin,
   robotsResponse,
@@ -47,8 +49,16 @@ async function route(request: Request, env: Env): Promise<Response> {
     return maybeHead(request, agentHomeResponse(origin));
   }
 
+  if (isRead && url.pathname === "/humans") {
+    return maybeHead(request, humansRedirectResponse(origin));
+  }
+
   if (isRead && (url.pathname === "/humans.html" || url.pathname === "/humans.md")) {
     return maybeHead(request, humansResponse(request, origin));
+  }
+
+  if (isRead && url.pathname === "/og-image.svg") {
+    return maybeHead(request, ogImageResponse());
   }
 
   if (isRead && url.pathname === "/llms.txt") {
