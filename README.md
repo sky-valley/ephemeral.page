@@ -54,6 +54,7 @@ The public root of the service is intentionally agent-first:
 - `/llms.txt` and `/llms-full.txt` serve LLM-friendly context.
 - `/openapi.json` and `/.well-known/api-catalog` expose the API for machine discovery.
 - `/og-image.png` and `/og-square.png` serve the social preview images referenced by the human page.
+- Search explainer pages such as `/what-is-ephemeral-page`, `/for-agents`, `/compare/human-in-the-loop`, `/compare/form-builders`, and `/compare/mcp-ui` give classic search engines and AI search systems focused crawl targets.
 
 The research and rationale are recorded in [docs/agent-readiness-research.md](docs/agent-readiness-research.md). The headless onboarding evidence is recorded in [docs/agent-onboarding-evals/2026-05-09-headless-codex-claude.md](docs/agent-onboarding-evals/2026-05-09-headless-codex-claude.md).
 

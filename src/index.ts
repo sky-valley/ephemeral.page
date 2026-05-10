@@ -15,6 +15,7 @@ import {
   openApiResponse,
   publicOrigin,
   robotsResponse,
+  searchPageResponse,
   sitemapResponse
 } from "./publicDocs";
 import { validateCreateRequest } from "./validation";
@@ -54,6 +55,13 @@ async function route(request: Request, env: Env): Promise<Response> {
 
   if (isRead && (url.pathname === "/humans.html" || url.pathname === "/humans.md")) {
     return maybeHead(request, humansResponse(request, origin));
+  }
+
+  if (isRead) {
+    const response = searchPageResponse(request, origin, url.pathname);
+    if (response) {
+      return maybeHead(request, response);
+    }
   }
 
   if (isRead && (url.pathname === "/og-image.png" || url.pathname === "/og-square.png")) {

@@ -12,6 +12,7 @@ describe("expression lifecycle", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/markdown");
     expect(response.headers.get("link")).toContain("/.well-known/api-catalog");
+    expect(response.headers.get("x-robots-tag")).toContain("index, follow");
     expect(body).toContain("# ephemeral.page AGENTS.md");
     expect(body).toContain("Humans should use");
     expect(body).toContain("POST /api/expressions");
@@ -32,6 +33,8 @@ describe("expression lifecycle", () => {
     expect(llms.headers.get("content-type")).toContain("text/markdown");
     expect(llmsBody).toContain("# ephemeral.page");
     expect(llmsBody).toContain("[OpenAPI]");
+    expect(llmsBody).toContain("[What is ephemeral.page?]");
+    expect(llmsBody).toContain("[ephemeral.page vs MCP UI]");
     expect(fullBody).toContain("# ephemeral.page AGENTS.md");
     expect(fullBody).toContain("# API summary");
   });
@@ -46,6 +49,7 @@ describe("expression lifecycle", () => {
 
     expect(html.status).toBe(200);
     expect(html.headers.get("content-type")).toContain("text/html");
+    expect(html.headers.get("cache-control")).toBe("public, max-age=300");
     expect(htmlBody).toContain("Temporary pages for one human response.");
     expect(htmlBody).toContain("<title>ephemeral.page - temporary pages for agent-to-human moments</title>");
     expect(htmlBody).toContain('property="og:title"');
@@ -59,6 +63,32 @@ describe("expression lifecycle", () => {
     expect(markdown.headers.get("content-type")).toContain("text/markdown");
     expect(markdownBody).toContain("# ephemeral.page");
     expect(markdownBody).toContain("ephemeral.page gives software agents");
+  });
+
+  it("serves search-oriented explainer pages for classic and AI retrieval", async () => {
+    const what = await SELF.fetch(`${ORIGIN}/what-is-ephemeral-page`);
+    const whatBody = await what.text();
+    const compare = await SELF.fetch(`${ORIGIN}/compare/mcp-ui`);
+    const compareBody = await compare.text();
+    const markdown = await SELF.fetch(`${ORIGIN}/for-agents`, {
+      headers: { accept: "text/markdown" }
+    });
+    const markdownBody = await markdown.text();
+
+    expect(what.status).toBe(200);
+    expect(what.headers.get("content-type")).toContain("text/html");
+    expect(what.headers.get("cache-control")).toBe("public, max-age=300");
+    expect(what.headers.get("x-robots-tag")).toContain("max-image-preview:large");
+    expect(whatBody).toContain("<title>What is ephemeral.page?");
+    expect(whatBody).toContain('type="application/ld+json"');
+    expect(whatBody).toContain('"@type":"FAQPage"');
+    expect(whatBody).toContain("temporary web expression service for agents");
+    expect(compare.status).toBe(200);
+    expect(compareBody).toContain("MCP UI is embedded UI");
+    expect(compareBody).toContain(`${ORIGIN}/compare/form-builders`);
+    expect(markdown.headers.get("content-type")).toContain("text/markdown");
+    expect(markdownBody).toContain("# ephemeral.page for agents");
+    expect(markdownBody).toContain("No SDK, host integration");
   });
 
   it("redirects the clean human URL to the canonical human page and serves social images", async () => {
@@ -112,11 +142,19 @@ describe("expression lifecycle", () => {
 
     expect(robots.status).toBe(200);
     expect(robotsBody).toContain("Content-Signal: ai-train=no, search=yes, ai-input=yes");
+    expect(robotsBody).toContain("User-agent: OAI-SearchBot\nAllow: /");
+    expect(robotsBody).toContain("User-agent: Claude-SearchBot\nAllow: /");
+    expect(robotsBody).toContain("User-agent: PerplexityBot\nAllow: /");
+    expect(robotsBody).toContain("User-agent: GPTBot\nDisallow: /");
+    expect(robotsBody).toContain("User-agent: ClaudeBot\nDisallow: /");
+    expect(robotsBody).toContain("User-agent: Google-Extended\nDisallow: /");
     expect(robotsBody).toContain("Allow: /humans.html");
     expect(robotsBody).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`);
     expect(sitemap.status).toBe(200);
     expect(sitemap.headers.get("content-type")).toContain("application/xml");
     expect(sitemapBody).toContain(`<loc>${ORIGIN}/humans.html</loc>`);
+    expect(sitemapBody).toContain(`<loc>${ORIGIN}/what-is-ephemeral-page</loc>`);
+    expect(sitemapBody).toContain(`<loc>${ORIGIN}/compare/mcp-ui</loc>`);
     expect(sitemapBody).toContain("<priority>1.0</priority>");
   });
 

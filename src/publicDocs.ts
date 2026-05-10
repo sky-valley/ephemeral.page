@@ -6,6 +6,188 @@ const HUMAN_PAGE_TITLE = "ephemeral.page - temporary pages for agent-to-human mo
 const HUMAN_PAGE_DESCRIPTION = "Agents create a small public page, ask a person for one focused response, capture it, and move on.";
 const HUMAN_OG_ALT = "ephemeral.page turns one focused agent question into a temporary public web page for a human response.";
 
+interface SearchPage {
+  path: string;
+  title: string;
+  description: string;
+  heading: string;
+  lede: string;
+  sections: Array<{
+    heading: string;
+    body: string[];
+  }>;
+  faqs: Array<{
+    question: string;
+    answer: string;
+  }>;
+}
+
+const SEARCH_PAGES: SearchPage[] = [
+  {
+    path: "/what-is-ephemeral-page",
+    title: "What is ephemeral.page? - temporary web pages for agents",
+    description: "ephemeral.page lets an agent create a temporary public web page for one focused human response, then retrieve the result by API.",
+    heading: "What is ephemeral.page?",
+    lede: "ephemeral.page is a temporary web expression service for agents. It gives software a small public page when a person needs to answer one focused thing.",
+    sections: [
+      {
+        heading: "The short version",
+        body: [
+          "An agent describes what it needs from a person. ephemeral.page turns that request into a temporary web page, returns a human-facing URL, accepts one submission, and gives the invoking agent a pollable result.",
+          "The product is intentionally smaller than app generation and more flexible than a form builder. It is for one question, one approval, one review, one choice, or one small structured response."
+        ]
+      },
+      {
+        heading: "Why agents need this",
+        body: [
+          "Many agents run in terminals, automations, background jobs, chat relays, and headless workflows. Those agents sometimes need a human response, but the human should not have to join the agent runtime or install a specialized app.",
+          "A temporary public page is a simple bridge: the agent shares a URL, the person answers, and the agent continues."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Is ephemeral.page a form builder?",
+        answer: "No. The agent states intent and optional desired result shape; the service composes a focused page for that moment."
+      },
+      {
+        question: "Is the page permanent?",
+        answer: "No. Pages are atomic and expire. The lifecycle is create, serve, submit once, poll result, expire, and clean up."
+      }
+    ]
+  },
+  {
+    path: "/for-agents",
+    title: "ephemeral.page for agents - create a human-facing surface by HTTP",
+    description: "How agents use ephemeral.page: create one temporary human page, share only the human URL, submit once, and poll the private result URL.",
+    heading: "ephemeral.page for agents",
+    lede: "Agents can use ephemeral.page with ordinary HTTP. No SDK, host integration, embedded UI runtime, or installed skill is required for first use.",
+    sections: [
+      {
+        heading: "Cold-start flow",
+        body: [
+          "The agent reads the root Markdown document, sends POST /api/expressions with an intent, receives a human URL plus private result and status URLs, gives the human only the human URL, and polls the private result URL.",
+          "The page itself receives exactly one privileged operation: window.ephemeral.submit(result). It cannot read the result, call arbitrary platform APIs, or access account resources."
+        ]
+      },
+      {
+        heading: "Good first tasks",
+        body: [
+          "Use ephemeral.page for approvals, quick choices, media checks, small structured answers, short reviews, and confirmations that unblock an agent.",
+          "Do not use one expression for a multi-step workflow. Create a new expression for each atomic human interaction."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Does an agent need a skill to use ephemeral.page?",
+        answer: "No. The site is designed for cold agents first. After one successful create-submit-poll loop, the agent can ask its operator whether to create a local skill."
+      },
+      {
+        question: "Which URL should the agent keep private?",
+        answer: "The agent should keep result_url and status_url private. The human only receives the returned url."
+      }
+    ]
+  },
+  {
+    path: "/compare/human-in-the-loop",
+    title: "ephemeral.page and human-in-the-loop agent workflows",
+    description: "ephemeral.page is a lightweight human-in-the-loop surface for agents that need one public, temporary, focused human response.",
+    heading: "ephemeral.page and human-in-the-loop workflows",
+    lede: "Human-in-the-loop systems usually coordinate approvals, reviews, and escalations inside a larger workflow. ephemeral.page focuses on the smallest useful unit: one temporary page for one human response.",
+    sections: [
+      {
+        heading: "Where it fits",
+        body: [
+          "Use ephemeral.page when an agent needs a person to answer one thing and then continue. The agent can be headless, remote, mobile-mediated, or embedded in another system.",
+          "The service handles the public URL, submit operation, one-response locking, result polling, expiration, and cleanup."
+        ]
+      },
+      {
+        heading: "Where it does not fit",
+        body: [
+          "It is not a full workflow engine, task inbox, approval queue, identity provider, or enterprise governance layer. Those systems can call ephemeral.page for a focused interaction, but they remain responsible for the broader process."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Can a human-in-the-loop SDK call ephemeral.page?",
+        answer: "Yes. Any system that can make HTTP requests and share a URL can create an expression and poll the result."
+      },
+      {
+        question: "Does ephemeral.page replace approval workflows?",
+        answer: "No. It gives approval workflows a temporary web surface when they need one focused human response."
+      }
+    ]
+  },
+  {
+    path: "/compare/form-builders",
+    title: "ephemeral.page vs form builders",
+    description: "Unlike form builders, ephemeral.page asks agents for intent and composes a temporary one-off page for a focused human interaction.",
+    heading: "ephemeral.page vs form builders",
+    lede: "Form builders expose fields, templates, and persistent collection surfaces. ephemeral.page exposes a lifecycle: create a temporary page, submit once, poll the result, and clean up.",
+    sections: [
+      {
+        heading: "Different primitive",
+        body: [
+          "A form builder asks a person or agent to choose fields. ephemeral.page asks the agent what it is trying to get from the human, what materials should be shown, and what result shape would be useful.",
+          "The generated page can use HTML, CSS, and JavaScript freely, but the platform gives it only one privileged backend operation: submit the result."
+        ]
+      },
+      {
+        heading: "When to use each",
+        body: [
+          "Use a form builder for reusable forms, surveys, intake flows, and ongoing data collection.",
+          "Use ephemeral.page when an agent needs a temporary public surface for a single interaction that should disappear after it is done."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Can agents define fields directly?",
+        answer: "Agents can provide a desired result shape, but the service composes the focused page rather than exposing a form template API."
+      },
+      {
+        question: "Can a page collect more than one response?",
+        answer: "No. First valid submission wins. This keeps the interaction atomic and easy for agents to reason about."
+      }
+    ]
+  },
+  {
+    path: "/compare/mcp-ui",
+    title: "ephemeral.page vs MCP UI",
+    description: "MCP UI is embedded UI for capable hosts. ephemeral.page is public ephemeral web UI for any agent that can call HTTP and share a URL.",
+    heading: "ephemeral.page vs MCP UI",
+    lede: "MCP UI and embedded agent UI are useful when the host can render trusted interface components. ephemeral.page is for public, shareable, temporary web surfaces outside the host.",
+    sections: [
+      {
+        heading: "The key distinction",
+        body: [
+          "MCP UI is embedded UI for MCP-capable hosts. ephemeral.page is public ephemeral web UI as a service.",
+          "An agent does not need to be inside a host that supports custom UI. It only needs HTTP access and a way to share the human URL."
+        ]
+      },
+      {
+        heading: "Later integration",
+        body: [
+          "MCP integration can wrap ephemeral.page later as a tool, but it is not the core product. The core product is the public lifecycle: create page, host page, submit result, poll or callback result, expire, and clean up."
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Is ephemeral.page embedded UI?",
+        answer: "No. It creates public temporary pages rather than embedding UI inside an agent host."
+      },
+      {
+        question: "Can MCP tools use ephemeral.page?",
+        answer: "Yes. An MCP tool could create expressions and return human URLs, but any HTTP-capable agent can do the same."
+      }
+    ]
+  }
+];
+
 export function publicOrigin(request: Request, configuredOrigin?: string): string {
   const requestOrigin = new URL(request.url).origin;
   if (/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(requestOrigin)) {
@@ -54,6 +236,31 @@ export function humansRedirectResponse(origin: string): Response {
   return new Response(null, { status: 301, headers });
 }
 
+export function searchPageResponse(request: Request, origin: string, pathname: string): Response | null {
+  const page = searchPageFor(pathname);
+  if (!page) return null;
+  if (prefersMarkdown(request)) {
+    return markdown(searchPageMarkdown(origin, page), { headers: discoveryHeaders(origin) });
+  }
+  return new Response(searchPageHtml(origin, page), {
+    headers: discoveryHeaders(origin, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=300",
+      "referrer-policy": "no-referrer",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "content-security-policy": [
+        "default-src 'none'",
+        "base-uri 'none'",
+        "frame-ancestors 'none'",
+        "script-src 'unsafe-inline'",
+        "style-src 'unsafe-inline'",
+        "img-src 'self' data:"
+      ].join("; ")
+    })
+  });
+}
+
 export function llmsTxtResponse(origin: string): Response {
   return markdown(llmsTxt(origin), { headers: discoveryHeaders(origin) });
 }
@@ -80,6 +287,55 @@ export function robotsResponse(origin: string): Response {
   return textDocument([
     "# ephemeral.page is intended to be readable by agents at inference time.",
     "# Please use /, /llms.txt, /llms-full.txt, and /.well-known/api-catalog before scraping HTML.",
+    "# Search/retrieval crawlers are allowed. Training crawlers are disallowed where they expose distinct user agents.",
+    "User-agent: OAI-SearchBot",
+    "Allow: /",
+    "",
+    "User-agent: ChatGPT-User",
+    "Allow: /",
+    "",
+    "User-agent: Claude-SearchBot",
+    "Allow: /",
+    "",
+    "User-agent: Claude-User",
+    "Allow: /",
+    "",
+    "User-agent: PerplexityBot",
+    "Allow: /",
+    "",
+    "User-agent: Googlebot",
+    "Allow: /",
+    "",
+    "User-agent: Bingbot",
+    "Allow: /",
+    "",
+    "User-agent: Applebot",
+    "Allow: /",
+    "",
+    "User-agent: DuckDuckBot",
+    "Allow: /",
+    "",
+    "User-agent: Twitterbot",
+    "Allow: /",
+    "",
+    "User-agent: LinkedInBot",
+    "Allow: /",
+    "",
+    "User-agent: facebookexternalhit",
+    "Allow: /",
+    "",
+    "User-agent: GPTBot",
+    "Disallow: /",
+    "",
+    "User-agent: ClaudeBot",
+    "Disallow: /",
+    "",
+    "User-agent: Google-Extended",
+    "Disallow: /",
+    "",
+    "User-agent: CCBot",
+    "Disallow: /",
+    "",
     "User-agent: *",
     "Allow: /",
     "Allow: /humans.html",
@@ -93,6 +349,7 @@ export function sitemapResponse(origin: string): Response {
   const urls = [
     { path: "/humans.html", changefreq: "weekly", priority: "1.0" },
     { path: "/", changefreq: "weekly", priority: "0.9" },
+    ...SEARCH_PAGES.map((page) => ({ path: page.path, changefreq: "weekly", priority: "0.8" })),
     { path: "/llms.txt", changefreq: "weekly", priority: "0.6" },
     { path: "/llms-full.txt", changefreq: "weekly", priority: "0.6" },
     { path: "/openapi.json", changefreq: "weekly", priority: "0.5" },
@@ -301,6 +558,10 @@ Guidance:
 - [${origin}/robots.txt](${origin}/robots.txt): crawl preferences and sitemap.
 - [${origin}/humans.html](${origin}/humans.html): human explanation.
 
+## Search explainers
+
+${searchPageLinks(origin)}
+
 ## First-success follow-up
 
 Do not install or fetch an ephemeral.page skill before you have completed one create -> human URL -> submit -> poll loop.
@@ -361,6 +622,10 @@ Start at the agent home unless you already know which artifact you need. The roo
 
 - [Human page](${origin}/humans.html): Plain explanation of what ephemeral.page is and why it exists.
 - [Human page as Markdown](${origin}/humans.md): Markdown version of the human page.
+
+## Search explainers
+
+${searchPageLinks(origin)}
 
 ## Optional
 
@@ -435,6 +700,10 @@ A chat message is not always the right surface. A full application is too much. 
 ## What it is not
 
 It is not a workflow engine, a persistent app host, or an account system. Each page is atomic: one question, one task, one approval, one review, one focused action.
+
+## Read next
+
+${searchPageLinks(origin)}
 
 ## Current status
 
@@ -547,6 +816,13 @@ function humanHtml(origin: string): string {
     </section>
 
     <section>
+      <h2>Read next</h2>
+      <ul>
+        ${SEARCH_PAGES.map((page) => `<li><a href="${origin}${page.path}">${escapeHtml(page.heading)}</a></li>`).join("\n        ")}
+      </ul>
+    </section>
+
+    <section>
       <h2>Status</h2>
       <p>This is an early Cloudflare-only MVP. Agents should start at <a href="${origin}/"><code>/</code></a>. Humans can read this page. Source is on <a href="https://github.com/sky-valley/ephemeral.page">GitHub</a>.</p>
     </section>
@@ -557,32 +833,180 @@ function humanHtml(origin: string): string {
 </html>`;
 }
 
-function structuredDataJson(origin: string): string {
-  return JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "ephemeral.page",
-    applicationCategory: "DeveloperApplication",
-    operatingSystem: "Web",
-    url: `${origin}/humans.html`,
-    description: HUMAN_PAGE_DESCRIPTION,
-    creator: {
-      "@type": "Organization",
-      name: "Sky Valley"
+function searchPageFor(pathname: string): SearchPage | undefined {
+  return SEARCH_PAGES.find((page) => page.path === pathname);
+}
+
+function searchPageLinks(origin: string): string {
+  return SEARCH_PAGES.map((page) => `- [${page.heading}](${origin}${page.path}): ${page.description}`).join("\n");
+}
+
+function searchPageMarkdown(origin: string, page: SearchPage): string {
+  return `# ${page.heading}
+
+${page.lede}
+
+${page.sections.map((section) => `## ${section.heading}
+
+${section.body.join("\n\n")}`).join("\n\n")}
+
+## Common questions
+
+${page.faqs.map((faq) => `### ${faq.question}
+
+${faq.answer}`).join("\n\n")}
+
+## Use ephemeral.page
+
+- Agent home: [${origin}/](${origin}/)
+- Human overview: [${origin}/humans.html](${origin}/humans.html)
+- API: [${origin}/openapi.json](${origin}/openapi.json)
+`;
+}
+
+function searchPageHtml(origin: string, page: SearchPage): string {
+  const canonicalUrl = `${origin}${page.path}`;
+  const ogImageUrl = `${origin}/og-image.png`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(page.title)}</title>
+  <meta name="description" content="${escapeHtml(page.description)}" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="${canonicalUrl}" />
+  <link rel="alternate" type="text/markdown" href="${canonicalUrl}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ephemeral.page" />
+  <meta property="og:title" content="${escapeHtml(page.title)}" />
+  <meta property="og:description" content="${escapeHtml(page.description)}" />
+  <meta property="og:url" content="${canonicalUrl}" />
+  <meta property="og:image" content="${ogImageUrl}" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${escapeHtml(HUMAN_OG_ALT)}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${escapeHtml(page.title)}" />
+  <meta name="twitter:description" content="${escapeHtml(page.description)}" />
+  <meta name="twitter:image" content="${ogImageUrl}" />
+  <script type="application/ld+json">${searchPageStructuredDataJson(origin, page)}</script>
+  <style>
+    :root { color-scheme: light; font-family: Charter, "Iowan Old Style", "Bitstream Charter", Georgia, serif; background: #f8f7f1; color: #181a17; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { width: min(780px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0 84px; }
+    .mark { font: 700 0.78rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0; color: #28645a; margin: 0 0 48px; }
+    h1 { font-size: clamp(2.2rem, 7vw, 4.8rem); line-height: 0.97; letter-spacing: 0; margin: 0 0 22px; }
+    .lede { font-size: clamp(1.14rem, 2vw, 1.45rem); line-height: 1.5; margin: 0 0 44px; }
+    section { border-top: 1px solid #d8d4c9; padding-top: 28px; margin-top: 28px; }
+    h2 { font: 700 0.82rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0; color: #28645a; margin: 0 0 14px; }
+    h3 { font-size: 1.24rem; line-height: 1.25; margin: 22px 0 8px; }
+    p, li { font-size: 1.05rem; line-height: 1.65; }
+    p { margin: 0 0 16px; }
+    ul { padding-left: 20px; }
+    a { color: #174f82; text-underline-offset: 0.18em; }
+    nav { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 36px; font: 0.95rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="mark">ephemeral.page</p>
+    <h1>${escapeHtml(page.heading)}</h1>
+    <p class="lede">${escapeHtml(page.lede)}</p>
+    ${page.sections.map((section) => `<section><h2>${escapeHtml(section.heading)}</h2>${section.body.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}</section>`).join("\n    ")}
+    <section>
+      <h2>Common questions</h2>
+      ${page.faqs.map((faq) => `<h3>${escapeHtml(faq.question)}</h3><p>${escapeHtml(faq.answer)}</p>`).join("\n      ")}
+    </section>
+    <nav aria-label="Related pages">
+      <a href="${origin}/humans.html">Human overview</a>
+      <a href="${origin}/">Agent home</a>
+      <a href="${origin}/openapi.json">OpenAPI</a>
+      ${SEARCH_PAGES.filter((candidate) => candidate.path !== page.path).map((candidate) => `<a href="${origin}${candidate.path}">${escapeHtml(candidate.heading)}</a>`).join("\n      ")}
+    </nav>
+  </main>
+</body>
+</html>`;
+}
+
+function searchPageStructuredDataJson(origin: string, page: SearchPage): string {
+  return JSON.stringify([
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: page.title,
+      headline: page.heading,
+      url: `${origin}${page.path}`,
+      description: page.description,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "ephemeral.page",
+        url: origin
+      },
+      about: {
+        "@type": "SoftwareApplication",
+        name: "ephemeral.page",
+        applicationCategory: "DeveloperApplication"
+      }
     },
-    codeRepository: "https://github.com/sky-valley/ephemeral.page",
-    softwareHelp: {
-      "@type": "CreativeWork",
-      name: "ephemeral.page agent home",
-      url: origin
-    },
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-      availability: "https://schema.org/InStock"
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: page.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer
+        }
+      }))
     }
-  }).replaceAll("<", "\\u003c");
+  ]).replaceAll("<", "\\u003c");
+}
+
+function structuredDataJson(origin: string): string {
+  return JSON.stringify([
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Sky Valley",
+      url: "https://github.com/sky-valley"
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "ephemeral.page",
+      url: origin,
+      description: HUMAN_PAGE_DESCRIPTION
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "ephemeral.page",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Web",
+      url: `${origin}/humans.html`,
+      description: HUMAN_PAGE_DESCRIPTION,
+      creator: {
+        "@type": "Organization",
+        name: "Sky Valley"
+      },
+      codeRepository: "https://github.com/sky-valley/ephemeral.page",
+      softwareHelp: {
+        "@type": "CreativeWork",
+        name: "ephemeral.page agent home",
+        url: origin
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock"
+      }
+    }
+  ]).replaceAll("<", "\\u003c");
 }
 
 function openApi(origin: string): Record<string, unknown> {
@@ -816,7 +1240,12 @@ function apiCatalog(origin: string): Record<string, unknown> {
 }
 
 function discoveryHeaders(origin: string, extra?: HeadersInit): Headers {
+  const requestedCacheControl = new Headers(extra).get("cache-control");
   const headers = noStoreHeaders(extra);
+  if (requestedCacheControl) {
+    headers.set("cache-control", requestedCacheControl);
+  }
+  headers.set("x-robots-tag", "index, follow, max-image-preview:large");
   headers.set("link", [
     `<${origin}/llms.txt>; rel="alternate"; type="text/markdown"; title="llms.txt"`,
     `<${origin}/llms-full.txt>; rel="alternate"; type="text/markdown"; title="llms-full.txt"`,
