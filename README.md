@@ -163,6 +163,7 @@ The `https://ephemeral-page.noam-1a9.workers.dev` route remains enabled as a fal
 
 The deployment runbook is the source of truth for bootstrapping new environments, CI secrets, Cloudflare resources, and domain cutover:
 
+- [docs/current-deployment-state.md](docs/current-deployment-state.md)
 - [docs/deployment-runbook.md](docs/deployment-runbook.md)
 
 ## Sources

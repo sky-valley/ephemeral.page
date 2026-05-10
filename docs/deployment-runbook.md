@@ -4,6 +4,8 @@ This is the operational guide for booting and tending Cloudflare environments fo
 
 Last reviewed: 2026-05-10
 
+For the concise current-state snapshot, start with `docs/current-deployment-state.md`.
+
 ## Current Production Target
 
 - GitHub repository: `sky-valley/ephemeral.page`
