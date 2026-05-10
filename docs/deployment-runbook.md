@@ -166,6 +166,11 @@ Keep `workers.dev` enabled until custom domain DNS, certificate issuance, and re
 - GitHub CI run `25619115383` passed on `682d94a`.
 - GitHub Deploy run `25619115397` passed on `682d94a` and executed `Deploy Worker`; deployment version ID after CI deploy: `ff0c67f4-6249-4b6b-961b-cdb59b1fd23c`.
 - Remote smoke passed again against `https://ephemeral.page` after the CI deploy. Smoke expression id: `expr_EfII_qF0JbktGUGFs3`.
+- Pushed follow-up documentation commit `82eb503` (`Record custom domain verification`) to `main`.
+- GitHub CI run `25619143946` passed on `82eb503`.
+- GitHub Deploy run `25619143950` passed on `82eb503` and executed `Deploy Worker`; deployment version ID after that deploy: `f5fc3394-bef4-4474-85b1-87462388996c`.
+- Remote smoke passed again against `https://ephemeral.page` after the docs deploy. Smoke expression id: `expr_rcn7WqjQuyBvIFBQJ0`.
+- Final runbook-only correction commit should use `[skip ci]` to avoid recursively creating another deployment just to record the deployment record.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
