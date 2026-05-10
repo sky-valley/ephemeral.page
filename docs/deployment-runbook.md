@@ -162,6 +162,10 @@ Keep `workers.dev` enabled until custom domain DNS, certificate issuance, and re
 - Verified `https://ephemeral.page/humans.html` serves the human page with apex canonical, OG, Twitter, and JSON-LD metadata.
 - Verified `https://ephemeral.page/robots.txt` and `https://ephemeral.page/sitemap.xml` use apex URLs; Cloudflare managed robots content is present and the repo's search/retrieval crawler allowances are appended.
 - Remote smoke passed against `https://ephemeral.page`. Smoke expression id: `expr_KFDv1syq37-Cg18Q3S`.
+- Pushed commit `682d94a` (`Cut over production to ephemeral.page`) to `main`.
+- GitHub CI run `25619115383` passed on `682d94a`.
+- GitHub Deploy run `25619115397` passed on `682d94a` and executed `Deploy Worker`; deployment version ID after CI deploy: `ff0c67f4-6249-4b6b-961b-cdb59b1fd23c`.
+- Remote smoke passed again against `https://ephemeral.page` after the CI deploy. Smoke expression id: `expr_EfII_qF0JbktGUGFs3`.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
