@@ -146,18 +146,20 @@ Production isolation still needs a remote smoke test for Dynamic Workers or Work
 
 ## Deployment
 
-The first production target runs on Cloudflare Workers at:
+The production target runs on Cloudflare Workers at:
 
 ```text
-https://ephemeral-page.noam-1a9.workers.dev
+https://ephemeral.page
 ```
 
 Deploy and verify:
 
 ```sh
 npm run deploy
-EPHEMERAL_ORIGIN=https://ephemeral-page.noam-1a9.workers.dev npm run smoke:remote
+EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote
 ```
+
+The `https://ephemeral-page.noam-1a9.workers.dev` route remains enabled as a fallback while DNS and certificate changes settle.
 
 The deployment runbook is the source of truth for bootstrapping new environments, CI secrets, Cloudflare resources, and domain cutover:
 

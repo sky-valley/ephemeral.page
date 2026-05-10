@@ -2,7 +2,7 @@
 
 This is the operational guide for booting and tending Cloudflare environments for ephemeral.page.
 
-Last reviewed: 2026-05-09
+Last reviewed: 2026-05-10
 
 ## Current Production Target
 
@@ -10,10 +10,10 @@ Last reviewed: 2026-05-09
 - Cloudflare account: `Sky Valley Ambient Computing`
 - Cloudflare account ID: `1a935388be529ecd78ebce737183a551`
 - Worker: `ephemeral-page`
-- Temporary public origin: `https://ephemeral-page.noam-1a9.workers.dev`
-- Future public origin: `https://ephemeral.page`
+- Public origin: `https://ephemeral.page`
+- Fallback workers.dev origin: `https://ephemeral-page.noam-1a9.workers.dev`
 - Deployment command: `npm run deploy`
-- Remote smoke command: `EPHEMERAL_ORIGIN=https://ephemeral-page.noam-1a9.workers.dev npm run smoke:remote`
+- Remote smoke command: `EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote`
 
 ## Runtime Shape
 
@@ -39,7 +39,8 @@ Required production resources:
 - R2 bucket: `ephemeral-page-expression-assets`
 - Queue: `ephemeral-page-callbacks`
 - Workers AI binding: `AI`
-- `workers.dev` route enabled until the custom domain is ready.
+- Custom domains: `ephemeral.page` and `www.ephemeral.page`.
+- `workers.dev` route remains enabled as a fallback while DNS and certificate changes settle.
 
 Bootstrap commands:
 
@@ -49,7 +50,7 @@ npm run check
 npx wrangler r2 bucket create ephemeral-page-expression-assets
 npx wrangler queues create ephemeral-page-callbacks
 npm run deploy
-EPHEMERAL_ORIGIN=https://ephemeral-page.noam-1a9.workers.dev npm run smoke:remote
+EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote
 ```
 
 The R2 and Queue create commands are idempotent in spirit but not in exit code. If they say the resource already exists, continue.
@@ -79,14 +80,17 @@ Workers Builds is a reasonable later alternative. Cloudflare's Workers Builds ca
 
 ## Custom Domain Cutover
 
-When `ephemeral.page` is ready:
+Current custom domain setup:
 
-1. Add the domain/zone to Cloudflare or confirm it is already in the account.
-2. Add a Worker route or custom domain for the Worker.
-3. Change `env.production.vars.PUBLIC_ORIGIN` in `wrangler.jsonc` to `https://ephemeral.page`.
-4. Deploy with `npm run deploy`.
-5. Run `EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote`.
-6. Decide whether to disable the `workers.dev` route. Cloudflare docs note that adding routes can infer `workers_dev = false`, and disabling it in the dashboard without matching Wrangler config can be undone by the next deploy.
+1. Cloudflare zone: `ephemeral.page` in the `Sky Valley Ambient Computing` account.
+2. Cloudflare assigned nameservers: `dina.ns.cloudflare.com` and `jarred.ns.cloudflare.com`.
+3. Namecheap registrar nameservers should be set to those two Cloudflare nameservers.
+4. Wrangler `env.production.routes` contains custom domains for `ephemeral.page` and `www.ephemeral.page`.
+5. Wrangler `env.production.vars.PUBLIC_ORIGIN` is `https://ephemeral.page`.
+6. Deploy with `npm run deploy`.
+7. Run `EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote`.
+
+Keep `workers.dev` enabled until custom domain DNS, certificate issuance, and remote smoke are stable. Cloudflare docs note that adding routes can infer `workers_dev = false`, and disabling it in the dashboard without matching Wrangler config can be undone by the next deploy.
 
 ## Reality Log
 
@@ -139,6 +143,26 @@ When `ephemeral.page` is ready:
 - Verified `https://ephemeral-page.noam-1a9.workers.dev/.well-known/api-catalog` points to the deployed OpenAPI document.
 - Remote smoke passed after deploy. Smoke expression id: `expr_mLPou7Z7sdbOYORNyk`.
 
+2026-05-10 custom domain cutover:
+
+- Added Cloudflare zone `ephemeral.page` to the `Sky Valley Ambient Computing` account on the Free plan.
+- Cloudflare assigned nameservers `dina.ns.cloudflare.com` and `jarred.ns.cloudflare.com`.
+- Removed imported Namecheap parking A/CNAME web records from the Cloudflare zone during setup; kept imported Namecheap email forwarding MX/SPF records.
+- Updated Namecheap registrar nameservers from `dns1.registrar-servers.com` / `dns2.registrar-servers.com` to Cloudflare custom DNS.
+- Updated `wrangler.jsonc` production routes to attach Worker custom domains `ephemeral.page` and `www.ephemeral.page`.
+- Updated production `PUBLIC_ORIGIN` to `https://ephemeral.page` so generated agent docs and expression links use the apex domain.
+- `npm run check` passed: 15 Vitest lifecycle/public-surface tests passed after typecheck.
+- `npm run deploy:dry-run` passed and showed production `PUBLIC_ORIGIN` as `https://ephemeral.page`.
+- Deployed Worker `ephemeral-page` with custom domain triggers for `ephemeral.page` and `www.ephemeral.page`.
+- Deployment version ID: `0d04c3a8-3434-4e4b-94dc-54e959fee289`.
+- Confirmed HTTP routing on `http://ephemeral.page/` serves the agent root with apex `Link` headers.
+- Confirmed authoritative `.page` registry nameservers are `dina.ns.cloudflare.com` and `jarred.ns.cloudflare.com`; DNSSEC has no DS record at the registry.
+- HTTPS certificate issuance completed a few minutes after custom-domain creation.
+- Verified `https://ephemeral.page/` serves `text/markdown` agent instructions with apex API catalog, OpenAPI, llms, and human-page `Link` headers.
+- Verified `https://ephemeral.page/humans.html` serves the human page with apex canonical, OG, Twitter, and JSON-LD metadata.
+- Verified `https://ephemeral.page/robots.txt` and `https://ephemeral.page/sitemap.xml` use apex URLs; Cloudflare managed robots content is present and the repo's search/retrieval crawler allowances are appended.
+- Remote smoke passed against `https://ephemeral.page`. Smoke expression id: `expr_KFDv1syq37-Cg18Q3S`.
+
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
 ## Source Notes
@@ -150,3 +174,4 @@ Add a dated entry here after every bootstrap, deploy, failed deploy, migration, 
 - Cloudflare R2 docs: buckets can be created with `wrangler r2 bucket create`.
 - Cloudflare Queues docs: queues can be created with `wrangler queues create` and then bound as producer/consumer resources.
 - Cloudflare Workers AI docs: Workers AI is exposed through an `AI` binding on `env.AI`; local use of Workers AI still calls Cloudflare and can incur usage.
+- Cloudflare Workers custom domain docs: add `custom_domain: true` routes in `wrangler.jsonc`, then run `npx wrangler deploy` to create the Worker custom domains.

@@ -5,7 +5,7 @@ Run this before treating production isolation as verified.
 ## Current Durable Object Deployment
 
 - Deploy with `npm run deploy`.
-- Run `EPHEMERAL_ORIGIN=https://ephemeral-page.noam-1a9.workers.dev npm run smoke:remote`.
+- Run `EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote`.
 - Confirm the smoke script creates an expression, fetches the generated page, submits once, rejects a double submit, polls the result, and reads submitted status.
 - Create two expressions with different intents.
 - Verify each expression URL includes a distinct expression id and view capability.
