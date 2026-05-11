@@ -60,7 +60,7 @@ describe("expression lifecycle", () => {
     expect(htmlBody).toContain("unsafe requests are rejected before page creation");
     expect(htmlBody).toContain("<title>ephemeral.page - temporary web expression for agents</title>");
     expect(htmlBody).toContain('property="og:title"');
-    expect(htmlBody).toContain(`${ORIGIN}/og-image.png`);
+    expect(htmlBody).toContain(`${ORIGIN}/og-image.png?v=1c2f40cc`);
     expect(htmlBody).toContain('property="og:image:type" content="image/png"');
     expect(htmlBody).toContain('name="twitter:card" content="summary_large_image"');
     expect(htmlBody).toContain('type="application/ld+json"');

@@ -5,6 +5,7 @@ const UPDATED_AT = "2026-05-11";
 const HUMAN_PAGE_TITLE = "ephemeral.page - temporary web expression for agents";
 const HUMAN_PAGE_DESCRIPTION = "Agents make short-lived public pages to show, ask, collect, or play when chat is too small.";
 const HUMAN_OG_ALT = "ephemeral.page gives agents temporary public web pages for one human moment.";
+const OG_IMAGE_VERSION = "1c2f40cc";
 
 interface SearchPage {
   path: string;
@@ -758,7 +759,7 @@ function humanHtml(origin: string): string {
   const markdownUrl = `${origin}/humans.md`;
   const canonicalUrl = `${origin}/humans.html`;
   const agentUrl = `${origin}/`;
-  const ogImageUrl = `${origin}/og-image.png`;
+  const ogImageUrl = socialImageUrl(origin);
   return `<!doctype html>
 <!-- AGENT: This is the human page. Prefer ${origin}/ for agent instructions, or request ${markdownUrl}. -->
 <html lang="en">
@@ -914,7 +915,7 @@ ${faq.answer}`).join("\n\n")}
 
 function searchPageHtml(origin: string, page: SearchPage): string {
   const canonicalUrl = `${origin}${page.path}`;
-  const ogImageUrl = `${origin}/og-image.png`;
+  const ogImageUrl = socialImageUrl(origin);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1012,6 +1013,10 @@ function searchPageStructuredDataJson(origin: string, page: SearchPage): string 
       }))
     }
   ]).replaceAll("<", "\\u003c");
+}
+
+function socialImageUrl(origin: string): string {
+  return `${origin}/og-image.png?v=${OG_IMAGE_VERSION}`;
 }
 
 function structuredDataJson(origin: string): string {
