@@ -93,7 +93,7 @@ GitHub Actions is the active deployment path:
 
 - `.github/workflows/ci.yml` runs `npm run check` on pushes and PRs.
 - `.github/workflows/deploy.yml` runs `npm run check`, then deploys with Wrangler when `CLOUDFLARE_API_TOKEN` is present.
-- CI and Deploy use `actions/checkout@v6` and `actions/setup-node@v6`; Deploy sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` for `cloudflare/wrangler-action@v3`.
+- CI and Deploy use `actions/checkout@v6` and `actions/setup-node@v6`; Deploy runs the repo-installed Wrangler CLI with `npm run deploy` rather than `cloudflare/wrangler-action`.
 - Required secrets:
   - `CLOUDFLARE_ACCOUNT_ID`
   - `CLOUDFLARE_API_TOKEN`
