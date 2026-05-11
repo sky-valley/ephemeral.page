@@ -63,6 +63,7 @@ The repo uses GitHub Actions because it is explicit, portable, and easy for futu
 
 - `.github/workflows/ci.yml` runs `npm run check` on PRs and pushes to `main`.
 - `.github/workflows/deploy.yml` runs `npm run check`, then `wrangler deploy --env production` on pushes to `main` and manual dispatches when `CLOUDFLARE_API_TOKEN` exists. Until that token is configured, it logs a clear skip after the build check.
+- Workflows use `actions/checkout@v6` and `actions/setup-node@v6`; the Deploy job also sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` while `cloudflare/wrangler-action@v3` remains the current Cloudflare-documented action.
 
 Required GitHub repository secrets:
 
@@ -210,11 +211,17 @@ Keep `workers_dev = false` in `wrangler.jsonc` now that custom-domain DNS, certi
 - Latest observed deployment version after the passing GitHub deploy: `9d4ac37b-265a-4cce-9049-0757b29d32c4`.
 - Remote smoke passed against `https://ephemeral.page` after the final passing GitHub deploy. Smoke expression id: `expr_1txAqR30j8KP0haMVr`.
 
+2026-05-11 GitHub Actions Node runtime cleanup:
+
+- Updated CI and Deploy workflows from `actions/checkout@v4` / `actions/setup-node@v4` to `actions/checkout@v6` / `actions/setup-node@v6`.
+- Kept the project test runtime on Node 22 because Cloudflare tooling in this repo currently requires Node >=22 and the Node 20 deprecation was about action runtimes, not the project Node used by `npm run check`.
+- Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` to the Deploy job for `cloudflare/wrangler-action@v3`, which is still the Cloudflare-documented major version and otherwise emits the Node 20 action-runtime deprecation annotation.
+
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
 ## Source Notes
 
-- Cloudflare GitHub Actions docs: CI requires `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` secrets and can use `cloudflare/wrangler-action@v3`.
+- Cloudflare GitHub Actions docs: CI requires `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` secrets and currently documents `cloudflare/wrangler-action@v3`.
 - Cloudflare Workers Builds docs: connected repos run an optional build command followed by a deploy command, defaulting to `npx wrangler deploy`; deploy commands can be customized with `--env`.
 - Cloudflare Wrangler config docs: `wrangler.jsonc` is recommended for new projects, Wrangler config should be the source of truth, and bindings are not inherited by named environments.
 - Cloudflare workers.dev docs: workers.dev provides `<worker>.<account-subdomain>.workers.dev`, useful before a custom route or domain is ready.

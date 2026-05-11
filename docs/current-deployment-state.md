@@ -93,6 +93,7 @@ GitHub Actions is the active deployment path:
 
 - `.github/workflows/ci.yml` runs `npm run check` on pushes and PRs.
 - `.github/workflows/deploy.yml` runs `npm run check`, then deploys with Wrangler when `CLOUDFLARE_API_TOKEN` is present.
+- CI and Deploy use `actions/checkout@v6` and `actions/setup-node@v6`; Deploy sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` for `cloudflare/wrangler-action@v3`.
 - Required secrets:
   - `CLOUDFLARE_ACCOUNT_ID`
   - `CLOUDFLARE_API_TOKEN`
@@ -105,8 +106,7 @@ Recent successful runs:
 
 Known CI follow-up:
 
-- GitHub still emits the Node.js 20 action runtime deprecation warning for `actions/checkout@v4`, `actions/setup-node@v4`, and `cloudflare/wrangler-action@v3`.
-- Revisit before GitHub's 2026-06-02 Node 24 default change.
+- Confirm the next GitHub CI and Deploy runs complete without the Node.js 20 action runtime deprecation annotation.
 
 ## Re-Verify From Scratch
 
@@ -164,6 +164,5 @@ gh run list --repo sky-valley/ephemeral.page --limit 6
 
 ## Current Follow-Ups
 
-- Fix or suppress the GitHub Actions Node 20 deprecation warning before the June 2026 runner default change.
 - Monitor production create latency. Workers AI/Gemma 4 can make first expression creation take tens of seconds; add an explicit composer timeout/fallback if usage feels slow.
 - Dynamic Workers or Workers for Platforms remain future stricter isolation options, not the shipped runtime driver.
