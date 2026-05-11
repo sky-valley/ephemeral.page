@@ -222,6 +222,16 @@ Keep `workers_dev = false` in `wrangler.jsonc` now that custom-domain DNS, certi
 - Latest observed deployment version after the direct Wrangler deploy: `78e27398-6c19-4465-a9e7-06fdd8945357`.
 - Remote smoke passed against `https://ephemeral.page` after the direct Wrangler deploy. Smoke expression id: `expr__ioZHtjBAGvhqSaU16`.
 
+2026-05-11 web expression prompt coverage deploy:
+
+- Pushed commits `3161840` (`Add security posture to public surfaces`) and `9d61239` (`Expand web expression prompt coverage`) to `main`.
+- GitHub CI run `25647374422` passed on `9d61239`.
+- GitHub Deploy run `25647374427` passed on `9d61239` and executed the direct `npm run deploy` shell step.
+- Latest observed deployment version after the prompt coverage deploy: `e6a6366c-0459-476f-9d2c-c8f808126c56`.
+- Remote smoke passed against `https://ephemeral.page` after the deploy. Smoke expression id: `expr_96yBjqGHpUB6Uyb07y`.
+- Live prompt eval covered approval, comparison, report, media preview, acknowledgment, copy inspection, casual poll, and tiny story prompts. Before fixes, the report prompt was overblocked by the secret policy and the media prompt failed material mirroring. After the deploy, all 8 prompts created tailored pages and none fell back to the generic fixture-style page.
+- Full eval note: `docs/evals/2026-05-11-web-expression-live-prompt-eval.md`.
+
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
 ## Source Notes

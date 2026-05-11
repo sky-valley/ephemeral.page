@@ -1,6 +1,6 @@
 # ephemeral.page Current Deployment State
 
-Last verified: 2026-05-11T02:13:05Z
+Last verified: 2026-05-11T02:42:50Z
 
 This is the quick state snapshot for future agents. The longer chronological log lives in `docs/deployment-runbook.md`.
 
@@ -10,12 +10,12 @@ This is the quick state snapshot for future agents. The longer chronological log
 - workers.dev route: disabled in Wrangler; production traffic uses `https://ephemeral.page`
 - GitHub repository: `sky-valley/ephemeral.page`
 - Current local branch at verification: `main`
-- Repo HEAD used for live verification before this documentation update: `11ff8b4`
+- Repo HEAD used for live verification before this documentation update: `9d61239`
 - Cloudflare account: `Sky Valley Ambient Computing`
 - Cloudflare account ID: `1a935388be529ecd78ebce737183a551`
 - Worker: `ephemeral-page`
-- Latest observed Worker deployment version: `78e27398-6c19-4465-a9e7-06fdd8945357`
-- Latest end-to-end smoke expression id: `expr__ioZHtjBAGvhqSaU16`
+- Latest observed Worker deployment version: `e6a6366c-0459-476f-9d2c-c8f808126c56`
+- Latest end-to-end smoke expression id: `expr_96yBjqGHpUB6Uyb07y`
 
 ## What Is Deployed
 
@@ -29,6 +29,7 @@ The production deployment is the Cloudflare-only MVP:
 - Callbacks are disabled; polling remains the reliable read path.
 - Production page composition uses Workers AI with `@cf/google/gemma-4-26b-a4b-it`.
 - Local development remains deterministic with `COMPOSER=fixture` and no local AI binding.
+- The current public positioning is temporary web expression for agents: pages can ask, show, compare, preview, explain, acknowledge, or collect one response.
 
 This is not yet a Dynamic Workers or Workers for Platforms implementation. The current shipped isolation unit is one Durable Object per expression.
 
@@ -105,6 +106,9 @@ Recent successful runs:
 - The Cloudflare API token `ephemeral-page-github-actions` now carries the required five permissions: Workers Scripts Write, Workers R2 Storage Write, Workers AI Write, Account Settings Read, and `ephemeral.page` Workers Routes Write. The stale Queues Write permission was removed.
 - CI `25646699795` and Deploy `25646699783` passed for commit `11ff8b4`.
 - Deploy `25646699783` used the direct `npm run deploy` step and no longer emitted the GitHub Actions `Node.js 20` action-runtime deprecation annotation.
+- CI `25647374422` and Deploy `25647374427` passed for commit `9d61239`.
+- Deploy `25647374427` shipped the web-expression prompt coverage pass and uploaded Worker version `e6a6366c-0459-476f-9d2c-c8f808126c56`.
+- The post-deploy prompt eval created 8/8 representative pages with no generic fallback. Details: `docs/evals/2026-05-11-web-expression-live-prompt-eval.md`.
 
 Known CI follow-up:
 
@@ -164,6 +168,7 @@ gh run list --repo sky-valley/ephemeral.page --limit 6
 - Deleted the stale `ephemeral-page-callbacks` queue after it had zero producers and zero consumers.
 - Corrected the GitHub deploy token so CI can reconcile custom-domain Worker routes and confirmed the deploy job passes.
 - Removed the remaining Node 20-targeted Cloudflare deploy action from GitHub Actions and confirmed direct Wrangler deploy works from CI.
+- Repositioned the public agent/human surfaces around temporary web expression, added representative prompts, fixed benign API-key-step report overblocking, and fixed same-origin public asset mirroring for material previews.
 
 ## Current Follow-Ups
 
