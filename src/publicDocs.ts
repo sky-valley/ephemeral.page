@@ -2,9 +2,9 @@ import { escapeHtml } from "./escape";
 import { noStoreHeaders } from "./http";
 
 const UPDATED_AT = "2026-05-11";
-const HUMAN_PAGE_TITLE = "ephemeral.page - temporary pages for agent-to-human moments";
-const HUMAN_PAGE_DESCRIPTION = "Agents create a small public page, ask a person for one focused response, and keep the interaction temporary and capability-bound.";
-const HUMAN_OG_ALT = "ephemeral.page turns one focused agent question into a temporary public web page for a human response.";
+const HUMAN_PAGE_TITLE = "ephemeral.page - temporary web expression for agents";
+const HUMAN_PAGE_DESCRIPTION = "Agents make short-lived public pages to show, ask, collect, or play when chat is too small.";
+const HUMAN_OG_ALT = "ephemeral.page gives agents temporary public web pages for one human moment.";
 
 interface SearchPage {
   path: string;
@@ -370,23 +370,39 @@ ${urls.map((url) => `  <url><loc>${escapeXml(`${origin}${url.path}`)}</loc><last
 function agentHome(origin: string): string {
   return `# ephemeral.page AGENTS.md
 
-> ephemeral.page lets an agent create a temporary public web surface for one focused human interaction, then retrieve the result.
+> ephemeral.page lets an agent create a temporary public web expression for one human moment, then retrieve the result.
 
 You are reading the agent home for this origin. Humans should use [${origin}/humans.html](${origin}/humans.html).
 
 ## What this service is
 
-ephemeral.page is public ephemeral web UI as a service. It is for agents that can call HTTP and share a URL, including agents running headless, in chat, from a phone relay, or inside another system.
+ephemeral.page is web self-expression for agents: an HTTP API that turns an agent's intent into a short-lived public page.
 
-Use it when you need one atomic human interaction:
+Use it when chat is too small and the agent needs to show, ask, collect, or play in one temporary web surface:
 
 - ask one question
 - collect one approval
-- review one clip, image, document, or choice
+- compare options
+- preview or review media
+- show a finding or tiny report
+- collect an acknowledgment
 - capture one focused piece of structured input
-- give a human a small temporary page instead of forcing them into the agent chat
+- make a casual poll, invite, quiz, or choose-your-path page
 
 Do not use it for long-lived apps, multi-step workflows, secrets, payments, or anything that needs a user account.
+
+## Example prompts
+
+Use these as representative intent shapes:
+
+- Approval: "Create a temporary page for Maya to approve or reject this release plan. Show the summary first: ship the typography refresh today, keep the old billing screen unchanged, and monitor signups for 24 hours. Ask for approval, a risk level, and optional notes."
+- Comparison: "Create a page that lets Jordan compare three names for a small prototype: Lantern, Thread, and Fieldnote. Show each name with a one-line feel, then ask Jordan to choose one and explain why."
+- Report: "Create a concise one-page field report for Sam. The agent found that onboarding dropoff clusters around the first API key step. Show the finding, two likely causes, and one recommended next move. Ask Sam whether to investigate now or later."
+- Media review: "Create a page for Riley to review this draft social preview image. Show the image, ask whether it feels clear and trustworthy at small preview size, and collect one suggested change."
+- Acknowledgment: "Create a small acknowledgment page for Priya. Explain that the migration window is tonight from 9:00 PM to 9:30 PM Eastern, no customer action is required, and ask Priya to acknowledge that she saw it."
+- Copy review: "Create a page for Leon to inspect a proposed homepage line: 'When chat is too small, make a page.' Ask him to mark it as keep, revise, or reject, and collect a sharper alternative if he has one."
+- Casual poll: "Create a playful little page for three friends to pick dinner tonight. Options are noodles, tacos, or picnic snacks. Keep it light, ask for one vote and any strong veto."
+- Tiny story: "Create a tiny choose-your-path page for a friend. The setup: a mysterious blue door appears in a quiet library. Offer three paths and ask which path they choose, plus one sentence about why."
 
 ## Security posture
 
@@ -624,7 +640,7 @@ Use ${origin} to create one temporary human page for one focused interaction.
 function llmsTxt(origin: string): string {
   return `# ephemeral.page
 
-> Instant, one-off public web surfaces for agents that need one focused human interaction and a pollable result.
+> Temporary web expression for agents: short-lived public pages to show, ask, collect, or play, with a pollable result.
 
 Start at the agent home unless you already know which artifact you need. The root URL is intentionally Markdown for agents. Humans are at /humans.html.
 
@@ -695,28 +711,30 @@ Polls lifecycle status without the flexible result payload.
 function humanMarkdown(origin: string): string {
   return `# ephemeral.page
 
-ephemeral.page gives software agents a small public place to ask a person for one focused response.
+ephemeral.page gives agents a temporary public page when chat is too small.
 
-An agent creates a temporary page, shares the page URL with a human, waits for one submission, and retrieves the result. The page expires. The interaction is intentionally small.
+An agent can show a finding, ask a question, compare options, preview media, collect an acknowledgment, or make a casual little page for one moment. The human responds once. The agent retrieves the result. The page expires.
 
 ## Why it exists
 
-Many agents do useful work outside a full app interface. They run in terminals, automations, background jobs, chat threads, SMS relays, or other systems where a human sometimes needs to answer one thing.
+Many agents do useful work outside a full app interface. They run in terminals, automations, background jobs, chat threads, SMS relays, or other systems where a message is sometimes too small.
 
-A chat message is not always the right surface. A full application is too much. A form builder asks the agent to design fields. ephemeral.page sits in the gap: the agent describes what it needs, and the service turns that need into a temporary web page.
+A full application is too much. A form builder asks the agent to design fields. ephemeral.page sits in the gap: the agent describes the moment, and the service turns it into a temporary web page.
 
 ## What it is good for
 
 - approvals
 - quick choices
+- tiny reports
 - short reviews
-- small structured answers
 - media checks
+- acknowledgments
+- casual polls
 - one-off confirmations
 
 ## What it is not
 
-It is not a workflow engine, a persistent app host, or an account system. Each page is atomic: one question, one task, one approval, one review, one focused action.
+It is not a workflow engine, a persistent app host, a dashboard, or a reusable form system. Each page is atomic: one moment, one page, one response.
 
 ## Security posture
 
@@ -732,9 +750,7 @@ ${searchPageLinks(origin)}
 
 ## Current status
 
-This is an early Cloudflare-only MVP. It uses capability URLs, Durable Objects, R2, Workers AI, and a Durable Object-backed create-rate limiter. The public API is small: create a page, serve it, submit once, poll the result, expire and clean up.
-
-Agent documentation is available at [${origin}/](${origin}/). Source code is at [github.com/sky-valley/ephemeral.page](https://github.com/sky-valley/ephemeral.page).
+Agents should start at [${origin}/](${origin}/). Source code is at [github.com/sky-valley/ephemeral.page](https://github.com/sky-valley/ephemeral.page).
 `;
 }
 
@@ -814,13 +830,13 @@ function humanHtml(origin: string): string {
 <body>
   <main>
     <p class="mark">ephemeral.page</p>
-    <h1>Temporary pages for one human response.</h1>
-    <p class="lede">An agent creates a small public page, asks a person for one focused interaction, captures the response, and retrieves the result. The page expires when the job is done.</p>
+    <h1>Agents making little pages for people.</h1>
+    <p class="lede">When chat is too small, an agent can make a temporary public page to show, ask, collect, or play. One page, one moment, one response, then it closes.</p>
 
     <section>
       <h2>Why</h2>
-      <p>Agents increasingly work outside full applications: in terminals, automations, chat relays, and background jobs. Sometimes they need a person to answer one thing. A chat message is too narrow. A permanent app is too much.</p>
-      <p>ephemeral.page gives that moment a web surface.</p>
+      <p>Agents increasingly work outside full applications: in terminals, automations, chat relays, and background jobs. Sometimes a message is too narrow and a permanent app is too much.</p>
+      <p>ephemeral.page gives that moment a temporary web surface.</p>
     </section>
 
     <section>
@@ -828,16 +844,18 @@ function humanHtml(origin: string): string {
       <ul>
         <li>approvals</li>
         <li>quick choices</li>
+        <li>tiny reports</li>
         <li>short reviews</li>
         <li>media checks</li>
-        <li>small structured answers</li>
+        <li>acknowledgments</li>
+        <li>casual polls</li>
         <li>one-off confirmations</li>
       </ul>
     </section>
 
     <section>
       <h2>Boundary</h2>
-      <p>Each page is atomic: one question, one task, one approval, one review, or one focused action. It is not a workflow engine or a persistent app host.</p>
+      <p>Each page is atomic: one moment, one page, one response. It is not a workflow engine, a dashboard, a persistent app host, or a reusable form system.</p>
     </section>
 
     <section>
@@ -860,11 +878,11 @@ function humanHtml(origin: string): string {
     </section>
 
     <section>
-      <h2>Status</h2>
-      <p>This is an early Cloudflare-only MVP. Agents should start at <a href="${origin}/"><code>/</code></a>. Humans can read this page. Source is on <a href="https://github.com/sky-valley/ephemeral.page">GitHub</a>.</p>
+      <h2>For agents</h2>
+      <p>Agents should start at <a href="${origin}/"><code>/</code></a> for the API contract and discovery files. Source is on <a href="https://github.com/sky-valley/ephemeral.page">GitHub</a>.</p>
     </section>
 
-    <footer>Public by design. Temporary by default.</footer>
+    <footer>When chat is too small, make a page.</footer>
   </main>
 </body>
 </html>`;

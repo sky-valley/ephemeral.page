@@ -1,5 +1,6 @@
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
+import { classifyComposition, classifyCreateRequest } from "../src/policy";
 import type { CreateExpressionResponse, ResultEnvelope } from "../src/types";
 
 const ORIGIN = "http://localhost:8787";
@@ -18,6 +19,8 @@ describe("expression lifecycle", () => {
     expect(body).toContain("POST /api/expressions");
     expect(body).toContain("Headless human submission");
     expect(body).toContain("Complete headless smoke");
+    expect(body).toContain("## Example prompts");
+    expect(body).toContain("When chat is too small");
     expect(body).toContain("## Security posture");
     expect(body).toContain("generated output is checked again before it is served");
     expect(body).toContain("The final path segment is the `view_token`");
@@ -52,10 +55,10 @@ describe("expression lifecycle", () => {
     expect(html.status).toBe(200);
     expect(html.headers.get("content-type")).toContain("text/html");
     expect(html.headers.get("cache-control")).toBe("public, max-age=300");
-    expect(htmlBody).toContain("Temporary pages for one human response.");
+    expect(htmlBody).toContain("Agents making little pages for people.");
     expect(htmlBody).toContain("<h2>Trust</h2>");
     expect(htmlBody).toContain("unsafe requests are rejected before page creation");
-    expect(htmlBody).toContain("<title>ephemeral.page - temporary pages for agent-to-human moments</title>");
+    expect(htmlBody).toContain("<title>ephemeral.page - temporary web expression for agents</title>");
     expect(htmlBody).toContain('property="og:title"');
     expect(htmlBody).toContain(`${ORIGIN}/og-image.png`);
     expect(htmlBody).toContain(`${ORIGIN}/og-square.png`);
@@ -66,7 +69,7 @@ describe("expression lifecycle", () => {
     expect(htmlBody).not.toContain("# ephemeral.page AGENTS.md");
     expect(markdown.headers.get("content-type")).toContain("text/markdown");
     expect(markdownBody).toContain("# ephemeral.page");
-    expect(markdownBody).toContain("ephemeral.page gives software agents");
+    expect(markdownBody).toContain("ephemeral.page gives agents a temporary public page");
     expect(markdownBody).toContain("## Security posture");
   });
 
@@ -173,6 +176,30 @@ describe("expression lifecycle", () => {
     expect(data.result_url).toContain(`/api/expressions/${data.id}/result?token=`);
     expect(data.status_url).toContain(`/api/expressions/${data.id}/status?token=`);
     expect(new Date(data.expires_at).getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("allows benign reports that mention sensitive terms without collecting them", () => {
+    expect(classifyCreateRequest({
+      intent: "Create a field report showing onboarding dropoff around the first API key step."
+    }).action).toBe("allow");
+
+    expect(classifyComposition({
+      title: "API key step report",
+      bodyHtml: "<main><h1>API key step report</h1><p>Dropoff clusters around the first API key setup step.</p><button id=\"later\">Investigate later</button></main>",
+      css: "",
+      script: "document.getElementById(\"later\").addEventListener(\"click\", () => window.ephemeral.submit({ decision: \"later\" }));"
+    }).action).toBe("allow");
+
+    expect(classifyCreateRequest({
+      intent: "Ask the user to paste their API key."
+    }).action).toBe("reject");
+
+    expect(classifyComposition({
+      title: "Connect account",
+      bodyHtml: "<main><h1>Connect account</h1><label>Enter your API key<input name=\"api_key\"></label></main>",
+      css: "",
+      script: "document.querySelector(\"input\").addEventListener(\"input\", () => {});"
+    }).action).toBe("reject");
   });
 
   it("rejects unsafe create requests before composition", async () => {

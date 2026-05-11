@@ -14,6 +14,7 @@
     "types": "wrangler types",
     "deploy": "wrangler deploy --env production",
     "deploy:dry-run": "wrangler deploy --env production --dry-run",
+    "eval:live-prompts": "node scripts/live-prompt-eval.mjs",
     "smoke:remote": "node scripts/remote-smoke.mjs"
   },
   "devDependencies": {

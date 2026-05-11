@@ -27,9 +27,9 @@ async function mirrorMaterial(
   index: number
 ): Promise<StoredMaterial> {
   const id = materialId(index);
-  const response = await fetchWithTimeout(material.url);
+  const response = await fetchWithTimeout(material.url, env);
   if (!response.ok) {
-    throw new HttpError(502, `Could not fetch material ${id}`);
+    throw new HttpError(502, `Could not fetch material ${id}: HTTP ${response.status}`);
   }
 
   const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() || "application/octet-stream";
@@ -58,12 +58,16 @@ async function mirrorMaterial(
   };
 }
 
-async function fetchWithTimeout(url: string): Promise<Response> {
+async function fetchWithTimeout(url: string, env: Env): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MIRROR_TIMEOUT_MS);
   try {
     let current = validateExternalHttpsUrl(url, "materials[].url");
     for (let redirects = 0; redirects <= MAX_MATERIAL_REDIRECTS; redirects += 1) {
+      if (isConfiguredPublicAsset(current, env) && env.ASSETS) {
+        return env.ASSETS.fetch(new Request(current.toString(), { signal: controller.signal }));
+      }
+
       const response = await fetch(current.toString(), {
         redirect: "manual",
         signal: controller.signal,
@@ -92,6 +96,16 @@ async function fetchWithTimeout(url: string): Promise<Response> {
     throw new HttpError(502, `Could not fetch material: ${message}`);
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+function isConfiguredPublicAsset(url: URL, env: Env): boolean {
+  if (!env.PUBLIC_ORIGIN || !env.ASSETS) return false;
+  try {
+    const publicOrigin = new URL(env.PUBLIC_ORIGIN);
+    return publicOrigin.protocol === "https:" && url.origin === publicOrigin.origin;
+  } catch {
+    return false;
   }
 }
 

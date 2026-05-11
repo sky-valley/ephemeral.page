@@ -12,11 +12,22 @@ export interface PolicyDecision {
   reason?: string;
 }
 
-const INPUT_RULES: Array<{ label: string; reason: string; pattern: RegExp }> = [
+interface TextRule {
+  label: string;
+  reason: string;
+  pattern?: RegExp;
+  matches?: (value: string) => boolean;
+}
+
+const SENSITIVE_COLLECTION_REASON = "Expressions cannot collect secrets, passwords, private keys, seed phrases, OAuth codes, or API keys.";
+const SENSITIVE_TERMS = /\b(password|passcode|api key|secret key|private key|seed phrase|recovery phrase|oauth|2fa|mfa|verification code|one-time code|ssn|social security|credit card|card number|cvv|bank account|routing number)\b/i;
+const COLLECTION_ACTIONS = /\b(ask|asks|asking|collect|collects|enter|provide|paste|type|submit|share|send|request|capture|upload|verify|fill in|input)\b/i;
+
+const INPUT_RULES: TextRule[] = [
   {
     label: "collects-secrets",
-    reason: "Expressions cannot collect secrets, passwords, private keys, seed phrases, OAuth codes, or API keys.",
-    pattern: /\b(password|passcode|api key|secret key|private key|seed phrase|recovery phrase|oauth|2fa|mfa|verification code|one-time code|ssn|social security|credit card|card number|cvv|bank account|routing number)\b/i
+    reason: SENSITIVE_COLLECTION_REASON,
+    matches: mentionsSensitiveCollection
   },
   {
     label: "login-or-impersonation",
@@ -82,7 +93,7 @@ const OUTPUT_RULES: Array<{ label: string; reason: string; pattern: RegExp; fiel
   {
     label: "sensitive-copy",
     reason: "Generated pages cannot ask humans for secrets, payments, login credentials, or identity documents.",
-    pattern: /\b(password|api key|secret key|private key|seed phrase|oauth|2fa|mfa|ssn|social security|credit card|cvv|bank account|passport|driver'?s license)\b/i,
+    pattern: /\b(ask|enter|provide|paste|type|submit|share|send|upload|verify|input)\b[^.!?\n]{0,120}\b(password|api key|secret key|private key|seed phrase|oauth|2fa|mfa|ssn|social security|credit card|cvv|bank account|passport|driver'?s license)\b/i,
     field: "all"
   }
 ];
@@ -123,14 +134,19 @@ export function classifyComposition(page: PageComposition): PolicyDecision {
 
 function classifyText(
   value: string,
-  rules: Array<{ label: string; reason: string; pattern: RegExp }>
+  rules: TextRule[]
 ): PolicyDecision {
   for (const rule of rules) {
-    if (rule.pattern.test(value)) {
+    if (rule.matches ? rule.matches(value) : rule.pattern?.test(value)) {
       return reject(rule.label, rule.reason);
     }
   }
   return { action: "allow", labels: [] };
+}
+
+function mentionsSensitiveCollection(value: string): boolean {
+  const chunks = value.split(/[\n.!?;]+/);
+  return chunks.some((chunk) => SENSITIVE_TERMS.test(chunk) && COLLECTION_ACTIONS.test(chunk));
 }
 
 function reject(label: string, reason: string): PolicyDecision {
