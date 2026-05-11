@@ -2,7 +2,7 @@
 
 This is the operational guide for booting and tending Cloudflare environments for ephemeral.page.
 
-Last reviewed: 2026-05-10
+Last reviewed: 2026-05-11
 
 For the concise current-state snapshot, start with `docs/current-deployment-state.md`.
 
@@ -26,7 +26,7 @@ The current deployment is a Cloudflare-only MVP:
 - Generated page HTML/CSS/JS is stored on the expression object and served through the expression capability URL.
 - The page receives only `window.ephemeral.submit(...)`; it does not receive R2, Durable Object, AI, secret, account API, or result-read bindings.
 - R2 stores mirrored materials privately, expression-scoped by object key.
-- Queues deliver optional callbacks in the currently deployed Worker, while polling remains authoritative. The hardening branch disables callbacks and removes active Queue bindings on the next deploy.
+- Callbacks are disabled; polling remains the result-delivery path.
 - Workers AI composes production pages with `@cf/google/gemma-4-26b-a4b-it`; local dev uses the fixture composer.
 
 This is not yet a Dynamic Workers implementation. If we later need stricter server-side generated-runtime isolation, add a runtime driver that provisions/deletes Dynamic Workers or Workers for Platforms units per expression, then rerun `docs/remote-smoke.md`.
@@ -38,9 +38,9 @@ Wrangler configuration is the source of truth. Binding definitions must be repea
 Required production resources:
 
 - Durable Object namespace for `ExpressionObject`, created by Wrangler migration tag `v1`.
+- Durable Object namespace for `CreateRateLimiter`, created by Wrangler migration tag `v2`.
 - R2 bucket: `ephemeral-page-expression-assets`
 - R2 lifecycle rule: `expire-expression-materials`, prefix `expressions/`, expires objects after 2 days.
-- Queue: `ephemeral-page-callbacks` for the currently deployed Worker. The hardening branch removes active Queue bindings and adds a `CreateRateLimiter` Durable Object namespace in migration tag `v2`.
 - Workers AI binding: `AI`
 - Custom domains: `ephemeral.page` and `www.ephemeral.page`.
 - `workers.dev` route is disabled; production traffic should use the custom domains.
@@ -67,7 +67,7 @@ The repo uses GitHub Actions because it is explicit, portable, and easy for futu
 Required GitHub repository secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`: `1a935388be529ecd78ebce737183a551`
-- `CLOUDFLARE_API_TOKEN`: a Cloudflare user API token scoped to the Sky Valley Ambient Computing account. Select `Edit` for Workers Scripts, Workers R2 Storage, and Workers AI, plus `Read` for Account Settings. Cloudflare's review screen labels the selected `Edit` permissions as `Write`.
+- `CLOUDFLARE_API_TOKEN`: a Cloudflare user API token scoped to the Sky Valley Ambient Computing account and the `ephemeral.page` zone. Select `Edit` for account-level Workers Scripts, Workers R2 Storage, and Workers AI, plus `Read` for Account Settings. Also select zone-level `Workers Routes:Edit` for `ephemeral.page`; Wrangler needs that permission to reconcile the `ephemeral.page` and `www.ephemeral.page` custom-domain routes. The deploy token should not include Queues now that callbacks are disabled and the queue resource has been removed.
 
 Never commit Cloudflare API tokens. Cloudflare's GitHub Actions docs explicitly call for secrets, and warn not to store `CLOUDFLARE_API_TOKEN` in the repository.
 
@@ -195,6 +195,20 @@ Keep `workers_dev = false` in `wrangler.jsonc` now that custom-domain DNS, certi
 - Updated Cloudflare/TypeScript tooling packages: `wrangler`, `@cloudflare/vitest-pool-workers`, `@cloudflare/workers-types`, and `typescript`.
 - `npm run check` passed locally with 16 Vitest lifecycle/security tests after typecheck.
 - `npm run deploy:dry-run` passed with `wrangler` 4.90.0 and showed the target production bindings, including `CREATE_RATE_LIMITER` and no Queue binding.
+
+2026-05-11 security hardening deploy and Cloudflare cleanup:
+
+- Pushed commit `13b7fba` (`Harden public expression creation`) to `main`.
+- GitHub CI run `25645959021` passed on `13b7fba`.
+- GitHub Deploy run `25645959012` uploaded Worker version `31b38e7f-aef5-4184-8ae9-d7cab556b95e`, then failed while calling `/zones/3d15463412a0b75268333a46cdb42419/workers/routes` because the GitHub Cloudflare API token did not include zone-level `Workers Routes:Edit`.
+- Verified the uploaded version is live in Cloudflare deployments and blocks password/login collection requests at `https://ephemeral.page/api/expressions`.
+- Remote smoke passed against `https://ephemeral.page`. Smoke expression id: `expr_4tgCcmrrtbrwX-hlVM`.
+- Removed the stale Queue consumer from `ephemeral-page-callbacks`, then deleted the detached `ephemeral-page-callbacks` queue after `wrangler queues list` showed zero producers and zero consumers.
+- Confirmed `wrangler queues list` no longer includes `ephemeral-page-callbacks`.
+- Updated Cloudflare API token `ephemeral-page-github-actions` to add zone-level `Workers Routes:Write` for `ephemeral.page`, then removed the stale `Queues:Write` permission after callbacks were disabled.
+- Reran GitHub Deploy run `25645959012`; it passed after both token changes. Latest successful job ID: `75276010590`.
+- Latest observed deployment version after the passing GitHub deploy: `9d4ac37b-265a-4cce-9049-0757b29d32c4`.
+- Remote smoke passed against `https://ephemeral.page` after the final passing GitHub deploy. Smoke expression id: `expr_1txAqR30j8KP0haMVr`.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 

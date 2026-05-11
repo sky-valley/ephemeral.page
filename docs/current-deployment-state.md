@@ -1,6 +1,6 @@
 # ephemeral.page Current Deployment State
 
-Last verified: 2026-05-11T01:27:22Z
+Last verified: 2026-05-11T02:01:05Z
 
 This is the quick state snapshot for future agents. The longer chronological log lives in `docs/deployment-runbook.md`.
 
@@ -10,12 +10,12 @@ This is the quick state snapshot for future agents. The longer chronological log
 - workers.dev route: disabled in Wrangler; production traffic uses `https://ephemeral.page`
 - GitHub repository: `sky-valley/ephemeral.page`
 - Current local branch at verification: `main`
-- Repo HEAD used for live verification before this documentation update: `fc9de1e`
+- Repo HEAD used for live verification before this documentation update: `13b7fba`
 - Cloudflare account: `Sky Valley Ambient Computing`
 - Cloudflare account ID: `1a935388be529ecd78ebce737183a551`
 - Worker: `ephemeral-page`
-- Latest observed Worker deployment version: `91739cae-0846-41e2-a363-81b9455e3c52`
-- Latest end-to-end smoke expression id: `expr_ulRES7uL1-gQqlF55L`
+- Latest observed Worker deployment version: `9d4ac37b-265a-4cce-9049-0757b29d32c4`
+- Latest end-to-end smoke expression id: `expr_1txAqR30j8KP0haMVr`
 
 ## What Is Deployed
 
@@ -26,7 +26,7 @@ The production deployment is the Cloudflare-only MVP:
 - Generated UI is served through expression-scoped capability URLs.
 - The page only receives `window.ephemeral.submit(...)`.
 - Mirrored materials are stored privately in R2 under expression-scoped keys.
-- Optional callbacks still exist in the currently deployed Worker; polling remains the reliable read path. The working tree contains a hardening change that disables callbacks on the next deploy.
+- Callbacks are disabled; polling remains the reliable read path.
 - Production page composition uses Workers AI with `@cf/google/gemma-4-26b-a4b-it`.
 - Local development remains deterministic with `COMPOSER=fixture` and no local AI binding.
 
@@ -39,9 +39,9 @@ Wrangler source of truth: `wrangler.jsonc`.
 Production bindings and triggers:
 
 - Durable Object namespace: `EXPRESSIONS`, class `ExpressionObject`, migration tag `v1`.
+- Durable Object namespace: `CREATE_RATE_LIMITER`, class `CreateRateLimiter`, migration tag `v2`.
 - R2 bucket: `ephemeral-page-expression-assets`.
 - R2 lifecycle rule: `expire-expression-materials`, prefix `expressions/`, expires objects after 2 days.
-- Queue producer and consumer: `ephemeral-page-callbacks` in the currently deployed Worker. The working tree removes this binding on the next deploy.
 - Workers AI binding: `AI`.
 - Static assets binding: `ASSETS` from `./public`.
 - Custom domains: `ephemeral.page` and `www.ephemeral.page`.
@@ -99,9 +99,9 @@ GitHub Actions is the active deployment path:
 
 Recent successful runs:
 
-- CI `25619143946` passed for commit `82eb503`.
-- Deploy `25619143950` passed for commit `82eb503`.
-- A final runbook-only correction commit `fc9de1e` was pushed with `[skip ci]` to avoid a recursive docs-only deploy.
+- CI `25645959021` passed for commit `13b7fba`.
+- Deploy `25645959012` passed for commit `13b7fba` after rerunning with the corrected Cloudflare API token. Latest successful job ID: `75276010590`.
+- The Cloudflare API token `ephemeral-page-github-actions` now carries the required five permissions: Workers Scripts Write, Workers R2 Storage Write, Workers AI Write, Account Settings Read, and `ephemeral.page` Workers Routes Write. The stale Queues Write permission was removed.
 
 Known CI follow-up:
 
@@ -158,6 +158,9 @@ gh run list --repo sky-valley/ephemeral.page --limit 6
 - Deployed and verified HTTPS certificate activation.
 - Verified the agent root, human page, OpenAPI, API catalog, robots, sitemap, OG asset, and end-to-end expression lifecycle.
 - Updated `README.md`, `docs/remote-smoke.md`, `docs/deployment-runbook.md`, and this snapshot.
+- Deployed commit `13b7fba` with security hardening, rate limiting, callbacks disabled, R2 lifecycle cleanup, and package updates.
+- Deleted the stale `ephemeral-page-callbacks` queue after it had zero producers and zero consumers.
+- Corrected the GitHub deploy token so CI can reconcile custom-domain Worker routes and confirmed the deploy job passes.
 
 ## Current Follow-Ups
 
