@@ -759,7 +759,6 @@ function humanHtml(origin: string): string {
   const canonicalUrl = `${origin}/humans.html`;
   const agentUrl = `${origin}/`;
   const ogImageUrl = `${origin}/og-image.png`;
-  const ogSquareImageUrl = `${origin}/og-square.png`;
   return `<!doctype html>
 <!-- AGENT: This is the human page. Prefer ${origin}/ for agent instructions, or request ${markdownUrl}. -->
 <html lang="en">
@@ -786,12 +785,6 @@ function humanHtml(origin: string): string {
   <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="${escapeHtml(HUMAN_OG_ALT)}" />
-  <meta property="og:image" content="${ogSquareImageUrl}" />
-  <meta property="og:image:secure_url" content="${ogSquareImageUrl}" />
-  <meta property="og:image:type" content="image/png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="1200" />
   <meta property="og:image:alt" content="${escapeHtml(HUMAN_OG_ALT)}" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${escapeHtml(HUMAN_PAGE_TITLE)}" />

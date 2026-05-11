@@ -62,7 +62,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     }
   }
 
-  if (isRead && (url.pathname === "/og-image.png" || url.pathname === "/og-square.png")) {
+  if (isRead && url.pathname === "/og-image.png") {
     return maybeHead(request, await staticAssetResponse(request, env));
   }
 

@@ -61,7 +61,6 @@ describe("expression lifecycle", () => {
     expect(htmlBody).toContain("<title>ephemeral.page - temporary web expression for agents</title>");
     expect(htmlBody).toContain('property="og:title"');
     expect(htmlBody).toContain(`${ORIGIN}/og-image.png`);
-    expect(htmlBody).toContain(`${ORIGIN}/og-square.png`);
     expect(htmlBody).toContain('property="og:image:type" content="image/png"');
     expect(htmlBody).toContain('name="twitter:card" content="summary_large_image"');
     expect(htmlBody).toContain('type="application/ld+json"');
@@ -99,11 +98,10 @@ describe("expression lifecycle", () => {
     expect(markdownBody).toContain("No SDK, host integration");
   });
 
-  it("redirects the clean human URL to the canonical human page and serves social images", async () => {
+  it("redirects the clean human URL to the canonical human page and serves the social image", async () => {
     const redirect = await SELF.fetch(`${ORIGIN}/humans`, { redirect: "manual" });
     const redirectHead = await SELF.fetch(`${ORIGIN}/humans`, { method: "HEAD", redirect: "manual" });
     const image = await SELF.fetch(`${ORIGIN}/og-image.png`);
-    const square = await SELF.fetch(`${ORIGIN}/og-square.png`);
 
     expect(redirect.status).toBe(301);
     expect(redirect.headers.get("location")).toBe(`${ORIGIN}/humans.html`);
@@ -113,9 +111,6 @@ describe("expression lifecycle", () => {
     expect(image.status).toBe(200);
     expect(image.headers.get("content-type")).toContain("image/png");
     expect((await image.arrayBuffer()).byteLength).toBeGreaterThan(100_000);
-    expect(square.status).toBe(200);
-    expect(square.headers.get("content-type")).toContain("image/png");
-    expect((await square.arrayBuffer()).byteLength).toBeGreaterThan(100_000);
   });
 
   it("serves machine-readable API discovery", async () => {
