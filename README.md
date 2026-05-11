@@ -73,8 +73,7 @@ Creates one expression.
     }
   ],
   "result": {
-    "desired_shape": "{ mood: string, notes?: string }",
-    "callback_url": "https://agent.example/result"
+    "desired_shape": "{ mood: string, notes?: string }"
   },
   "expires_in": "24h"
 }
@@ -110,7 +109,10 @@ Polls lifecycle status without requiring the generated page.
 - The human URL and agent URLs use separate high-entropy capabilities.
 - Capability hashes, not plaintext tokens, are stored.
 - The generated page receives only `window.ephemeral.submit`.
-- The generated page does not receive R2, Durable Object, Queue, AI, secret, account, or result-read bindings.
+- The generated page does not receive R2, Durable Object, AI, secret, account, or result-read bindings.
+- Create requests are rate-limited before material mirroring or Workers AI composition.
+- Requests that ask for secrets, logins, impersonation, dark patterns, or automatic submission are rejected before composition.
+- Generated page output is checked for disallowed fields, embeds, browser storage, navigation, external fetches, timer-based submission, and sensitive-data copy before it is served.
 - External materials must use `https:` and are mirrored into private R2 before being served through expression-scoped routes.
 - The page sends `no-store`, `no-referrer`, `nosniff`, `DENY`, and a strict CSP.
 
@@ -130,8 +132,8 @@ Submission immediately closes the active human flow. The result remains pollable
 Configured in `wrangler.jsonc`:
 
 - `EXPRESSIONS`: Durable Object namespace for one expression state cell per expression.
+- `CREATE_RATE_LIMITER`: Durable Object namespace for public create throttling.
 - `EXPRESSION_ASSETS`: private R2 bucket for mirrored materials.
-- `CALLBACK_QUEUE`: queue for optional callback delivery.
 - `AI`: Workers AI binding for production page composition.
 
 Local development uses Cloudflare's local runtime simulation plus a fixture composer and local expression runtime approximation. Production can enable Workers AI by setting `COMPOSER=workers-ai`; the default production model is Gemma 4:
@@ -159,7 +161,9 @@ npm run deploy
 EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote
 ```
 
-The `https://ephemeral-page.noam-1a9.workers.dev` route remains enabled as a fallback while DNS and certificate changes settle.
+The `workers.dev` route is disabled in Wrangler so production traffic uses the `ephemeral.page` custom domain.
+
+Callbacks are disabled in the MVP; agents should poll `result_url` or `status_url`.
 
 The deployment runbook is the source of truth for bootstrapping new environments, CI secrets, Cloudflare resources, and domain cutover:
 

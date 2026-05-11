@@ -1,4 +1,5 @@
 import { escapeHtml } from "./escape";
+import { classifyComposition } from "./policy";
 import type { CreateExpressionRequest, Env, PageComposition, StoredMaterial } from "./types";
 
 const DEFAULT_WORKERS_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it";
@@ -12,13 +13,28 @@ export interface ComposeInput {
 
 export async function composePage(env: Env, input: ComposeInput, request: CreateExpressionRequest): Promise<PageComposition> {
   if (env.COMPOSER === "workers-ai" && env.AI) {
-    return workersAiCompose(env, input, request);
+    const first = await workersAiCompose(env, input, request);
+    const firstDecision = classifyComposition(first);
+    if (firstDecision.action === "allow") {
+      return first;
+    }
+
+    const second = await workersAiCompose(env, input, request, firstDecision.reason);
+    const secondDecision = classifyComposition(second);
+    if (secondDecision.action === "allow") {
+      return second;
+    }
   }
 
   return fixtureCompose(input);
 }
 
-async function workersAiCompose(env: Env, input: ComposeInput, request: CreateExpressionRequest): Promise<PageComposition> {
+async function workersAiCompose(
+  env: Env,
+  input: ComposeInput,
+  request: CreateExpressionRequest,
+  policyFeedback?: string
+): Promise<PageComposition> {
   const response = await env.AI!.run(env.WORKERS_AI_MODEL || DEFAULT_WORKERS_AI_MODEL, {
     messages: [
       {
@@ -29,7 +45,10 @@ async function workersAiCompose(env: Env, input: ComposeInput, request: CreateEx
           "The page must call window.ephemeral.submit(result) from script when the user submits.",
           "After submit resolves, show a clear persistent end state that says the response was received and the human can close the page or return to what they were doing.",
           "Disable or hide submit controls after success. The success state must be visible, accessible, and announced with role=status or equivalent focus management.",
-          "Do not include external scripts, external stylesheets, backend calls, cookies, storage, or tracking."
+          "Do not include external scripts, external stylesheets, backend calls, cookies, storage, or tracking.",
+          "Do not ask for secrets, passwords, API keys, seed phrases, payment details, login credentials, or government identity documents.",
+          "Do not impersonate another brand or service.",
+          "Do not submit automatically; submit only from an explicit user event handler."
         ].join(" ")
       },
       {
@@ -44,7 +63,13 @@ async function workersAiCompose(env: Env, input: ComposeInput, request: CreateEx
             content_type: material.contentType
           }))
         })
-      }
+      },
+      ...(policyFeedback
+        ? [{
+            role: "user",
+            content: `The previous composition violated policy: ${policyFeedback}. Return a corrected compact JSON composition that preserves the benign task while satisfying policy.`
+          }]
+        : [])
     ]
   } as Record<string, unknown>);
 

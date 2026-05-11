@@ -42,5 +42,5 @@ Run this before treating production isolation as verified.
 - Human token cannot fetch result/status.
 - Agent token cannot submit.
 - Missing or invalid tokens return discovery-resistant errors.
-- Callback failure does not block result polling.
+- Callback URLs are rejected while callbacks are disabled in the MVP.
 - R2 material objects are private and expression-scoped.

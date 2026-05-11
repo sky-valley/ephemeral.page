@@ -13,7 +13,7 @@ For the concise current-state snapshot, start with `docs/current-deployment-stat
 - Cloudflare account ID: `1a935388be529ecd78ebce737183a551`
 - Worker: `ephemeral-page`
 - Public origin: `https://ephemeral.page`
-- Fallback workers.dev origin: `https://ephemeral-page.noam-1a9.workers.dev`
+- workers.dev route: disabled in Wrangler; production traffic uses `https://ephemeral.page`
 - Deployment command: `npm run deploy`
 - Remote smoke command: `EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote`
 
@@ -24,9 +24,9 @@ The current deployment is a Cloudflare-only MVP:
 - A shared Worker exposes the API and routes requests.
 - Each expression maps to one named Durable Object instance. That object is the authoritative isolated state cell for the expression, capability checks, one-response locking, expiry, result polling, and cleanup.
 - Generated page HTML/CSS/JS is stored on the expression object and served through the expression capability URL.
-- The page receives only `window.ephemeral.submit(...)`; it does not receive R2, Queue, Durable Object, AI, secret, account API, or result-read bindings.
+- The page receives only `window.ephemeral.submit(...)`; it does not receive R2, Durable Object, AI, secret, account API, or result-read bindings.
 - R2 stores mirrored materials privately, expression-scoped by object key.
-- Queues deliver optional callbacks, while polling remains authoritative.
+- Queues deliver optional callbacks in the currently deployed Worker, while polling remains authoritative. The hardening branch disables callbacks and removes active Queue bindings on the next deploy.
 - Workers AI composes production pages with `@cf/google/gemma-4-26b-a4b-it`; local dev uses the fixture composer.
 
 This is not yet a Dynamic Workers implementation. If we later need stricter server-side generated-runtime isolation, add a runtime driver that provisions/deletes Dynamic Workers or Workers for Platforms units per expression, then rerun `docs/remote-smoke.md`.
@@ -39,10 +39,11 @@ Required production resources:
 
 - Durable Object namespace for `ExpressionObject`, created by Wrangler migration tag `v1`.
 - R2 bucket: `ephemeral-page-expression-assets`
-- Queue: `ephemeral-page-callbacks`
+- R2 lifecycle rule: `expire-expression-materials`, prefix `expressions/`, expires objects after 2 days.
+- Queue: `ephemeral-page-callbacks` for the currently deployed Worker. The hardening branch removes active Queue bindings and adds a `CreateRateLimiter` Durable Object namespace in migration tag `v2`.
 - Workers AI binding: `AI`
 - Custom domains: `ephemeral.page` and `www.ephemeral.page`.
-- `workers.dev` route remains enabled as a fallback while DNS and certificate changes settle.
+- `workers.dev` route is disabled; production traffic should use the custom domains.
 
 Bootstrap commands:
 
@@ -50,12 +51,11 @@ Bootstrap commands:
 npm ci
 npm run check
 npx wrangler r2 bucket create ephemeral-page-expression-assets
-npx wrangler queues create ephemeral-page-callbacks
 npm run deploy
 EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote
 ```
 
-The R2 and Queue create commands are idempotent in spirit but not in exit code. If they say the resource already exists, continue.
+The R2 create command is idempotent in spirit but not in exit code. If it says the resource already exists, continue.
 
 ## GitHub Automation
 
@@ -67,7 +67,7 @@ The repo uses GitHub Actions because it is explicit, portable, and easy for futu
 Required GitHub repository secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`: `1a935388be529ecd78ebce737183a551`
-- `CLOUDFLARE_API_TOKEN`: a Cloudflare user API token scoped to the Sky Valley Ambient Computing account. Select `Edit` for Workers Scripts, Workers R2 Storage, Queues, and Workers AI, plus `Read` for Account Settings. Cloudflare's review screen labels the selected `Edit` permissions as `Write`.
+- `CLOUDFLARE_API_TOKEN`: a Cloudflare user API token scoped to the Sky Valley Ambient Computing account. Select `Edit` for Workers Scripts, Workers R2 Storage, and Workers AI, plus `Read` for Account Settings. Cloudflare's review screen labels the selected `Edit` permissions as `Write`.
 
 Never commit Cloudflare API tokens. Cloudflare's GitHub Actions docs explicitly call for secrets, and warn not to store `CLOUDFLARE_API_TOKEN` in the repository.
 
@@ -92,7 +92,7 @@ Current custom domain setup:
 6. Deploy with `npm run deploy`.
 7. Run `EPHEMERAL_ORIGIN=https://ephemeral.page npm run smoke:remote`.
 
-Keep `workers.dev` enabled until custom domain DNS, certificate issuance, and remote smoke are stable. Cloudflare docs note that adding routes can infer `workers_dev = false`, and disabling it in the dashboard without matching Wrangler config can be undone by the next deploy.
+Keep `workers_dev = false` in `wrangler.jsonc` now that custom-domain DNS, certificate issuance, and remote smoke are stable. Cloudflare docs note that disabling it in the dashboard without matching Wrangler config can be undone by the next deploy.
 
 ## Reality Log
 
@@ -173,6 +173,28 @@ Keep `workers.dev` enabled until custom domain DNS, certificate issuance, and re
 - GitHub Deploy run `25619143950` passed on `82eb503` and executed `Deploy Worker`; deployment version ID after that deploy: `f5fc3394-bef4-4474-85b1-87462388996c`.
 - Remote smoke passed again against `https://ephemeral.page` after the docs deploy. Smoke expression id: `expr_rcn7WqjQuyBvIFBQJ0`.
 - Final runbook-only correction commit should use `[skip ci]` to avoid recursively creating another deployment just to record the deployment record.
+
+2026-05-10 workers.dev route disablement:
+
+- Updated `wrangler.jsonc` to set `workers_dev` to `false` so the Worker is no longer reachable through `https://ephemeral-page.noam-1a9.workers.dev`.
+- Updated README, AGENTS.md, and the current deployment snapshot to treat `https://ephemeral.page` as the only supported production origin.
+- `npm run check` passed: 15 Vitest lifecycle/public-surface tests passed after typecheck.
+- `npm run deploy:dry-run` passed and showed production `PUBLIC_ORIGIN` as `https://ephemeral.page`.
+- `npm run deploy` succeeded. Deployment version ID: `91739cae-0846-41e2-a363-81b9455e3c52`.
+- Wrangler reported only the `ephemeral.page` and `www.ephemeral.page` custom-domain triggers; it warned that `workers.dev` and Preview URLs are disabled.
+- Verified `https://ephemeral.page/` still serves the agent root with apex `Link` headers.
+- Verified `https://ephemeral-page.noam-1a9.workers.dev/` now returns Cloudflare `404`.
+- Remote smoke passed against `https://ephemeral.page`. Smoke expression id: `expr_ulRES7uL1-gQqlF55L`.
+
+2026-05-10 security hardening pass prepared:
+
+- Prepared callback delivery disablement in the Worker contract and removed Queue bindings from `wrangler.jsonc`; polling remains the result-delivery path after the next deploy.
+- Added `CreateRateLimiter` as a Durable Object class in migration tag `v2` and bound it as `CREATE_RATE_LIMITER`.
+- Added request body caps, a `24h` maximum expression lifetime, deterministic create-request policy checks, generated-page output checks, material redirect validation, and create-failure R2 cleanup.
+- Added live R2 lifecycle rule `expire-expression-materials` on prefix `expressions/` to expire mirrored materials after 2 days.
+- Updated Cloudflare/TypeScript tooling packages: `wrangler`, `@cloudflare/vitest-pool-workers`, `@cloudflare/workers-types`, and `typescript`.
+- `npm run check` passed locally with 16 Vitest lifecycle/security tests after typecheck.
+- `npm run deploy:dry-run` passed with `wrangler` 4.90.0 and showed the target production bindings, including `CREATE_RATE_LIMITER` and no Queue binding.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 

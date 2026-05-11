@@ -4,7 +4,9 @@ import { parseDuration } from "./duration";
 import { ExpressionObject } from "./expressionObject";
 import { errorResponse, HttpError, json, parseJson } from "./http";
 import { expressionId } from "./ids";
-import { mirrorMaterials } from "./materials";
+import { MAX_CREATE_BODY_BYTES } from "./limits";
+import { deleteExpressionAssets, mirrorMaterials } from "./materials";
+import { classifyCreateRequest } from "./policy";
 import {
   agentHomeResponse,
   apiCatalogResponse,
@@ -18,10 +20,12 @@ import {
   searchPageResponse,
   sitemapResponse
 } from "./publicDocs";
+import { CreateRateLimiter, enforceCreateRateLimit } from "./rateLimiter";
 import { validateCreateRequest } from "./validation";
-import type { CallbackAttempt, CreateExpressionRequest, Env, ExpressionState } from "./types";
+import type { CreateExpressionRequest, Env, ExpressionState, StoredMaterial } from "./types";
 
 export { ExpressionObject };
+export { CreateRateLimiter };
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -29,12 +33,6 @@ export default {
       return await route(request, env);
     } catch (error) {
       return errorResponse(error);
-    }
-  },
-
-  async queue(batch: MessageBatch, env: Env): Promise<void> {
-    for (const message of batch.messages) {
-      await deliverCallback(message.body as { expressionId: string }, env);
     }
   }
 };
@@ -93,6 +91,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
 
   if (request.method === "POST" && url.pathname === "/api/expressions") {
+    await enforceCreateRateLimit(request, env);
     return createExpression(request, env);
   }
 
@@ -126,53 +125,65 @@ async function route(request: Request, env: Env): Promise<Response> {
 }
 
 async function createExpression(request: Request, env: Env): Promise<Response> {
-  const body = validateCreateRequest(await parseJson<CreateExpressionRequest>(request));
+  const body = validateCreateRequest(await parseJson<CreateExpressionRequest>(request, { maxBytes: MAX_CREATE_BODY_BYTES }));
+  const policy = classifyCreateRequest(body);
+  if (policy.action === "reject") {
+    throw new HttpError(400, policy.reason ?? "Expression rejected by policy");
+  }
+
   const id = expressionId();
   const now = Date.now();
   const expiresInMs = parseDuration(body.expires_in);
   const expiresAt = new Date(now + expiresInMs).toISOString();
   const viewCapability = await createCapability();
   const agentCapability = await createCapability();
-  const materials = await mirrorMaterials(env, id, body.materials ?? []);
-  const page = await composePage(
-    env,
-    {
+  let materials: StoredMaterial[] = [];
+
+  try {
+    materials = await mirrorMaterials(env, id, body.materials ?? []);
+    const page = await composePage(
+      env,
+      {
+        id,
+        intent: body.intent,
+        desiredShape: body.result?.desired_shape,
+        materials
+      },
+      body
+    );
+
+    const state: ExpressionState = {
       id,
+      status: "active",
       intent: body.intent,
       desiredShape: body.result?.desired_shape,
-      materials
-    },
-    body
-  );
+      createdAt: new Date(now).toISOString(),
+      expiresAt,
+      retentionEndsAt: expiresAt,
+      viewTokenHash: viewCapability.hash,
+      agentTokenHash: agentCapability.hash,
+      materials,
+      page,
+      cleanup: {
+        activeFlowClosed: false,
+        runtimeDeleted: false,
+        assetsDeleted: false,
+        resultPurged: false,
+        errors: []
+      }
+    };
 
-  const state: ExpressionState = {
-    id,
-    status: "active",
-    intent: body.intent,
-    desiredShape: body.result?.desired_shape,
-    callbackUrl: body.result?.callback_url,
-    createdAt: new Date(now).toISOString(),
-    expiresAt,
-    retentionEndsAt: expiresAt,
-    viewTokenHash: viewCapability.hash,
-    agentTokenHash: agentCapability.hash,
-    materials,
-    page,
-    cleanup: {
-      activeFlowClosed: false,
-      runtimeDeleted: false,
-      assetsDeleted: false,
-      resultPurged: false,
-      errors: []
-    },
-    callbackAttempts: []
-  };
-
-  await objectFetch(env, id, "/create", new Request("https://expression/create", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ state })
-  }));
+    await objectFetch(env, id, "/create", new Request("https://expression/create", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ state })
+    }));
+  } catch (error) {
+    if (materials.length > 0) {
+      await deleteExpressionAssets(env, materials).catch(() => undefined);
+    }
+    throw error;
+  }
 
   const origin = publicOrigin(request, env.PUBLIC_ORIGIN);
   return json(
@@ -202,61 +213,6 @@ async function objectFetch(env: Env, id: string, path: string, source?: Request)
       }
     : undefined;
   return stub.fetch(`https://expression${path}`, init);
-}
-
-async function deliverCallback(message: { expressionId: string }, env: Env): Promise<void> {
-  const payloadResponse = await objectFetch(
-    env,
-    message.expressionId,
-    "/callback-payload",
-    new Request("https://expression/callback-payload", { method: "POST" })
-  );
-  const payload = (await payloadResponse.json()) as { callbackUrl?: string; result?: unknown };
-  if (!payload.callbackUrl || !payload.result) {
-    return;
-  }
-
-  const attemptedAt = new Date().toISOString();
-  let attempt: CallbackAttempt;
-  try {
-    const response = await fetch(payload.callbackUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload.result),
-      redirect: "manual"
-    });
-    attempt = {
-      attemptedAt,
-      status: response.ok ? "success" : "failure",
-      statusCode: response.status
-    };
-    if (!response.ok) {
-      throw new Error(`Callback returned ${response.status}`);
-    }
-  } catch (error) {
-    attempt = {
-      attemptedAt,
-      status: "failure",
-      error: error instanceof Error ? error.message : "callback failed"
-    };
-    await recordCallbackAttempt(env, message.expressionId, attempt);
-    throw error;
-  }
-
-  await recordCallbackAttempt(env, message.expressionId, attempt);
-}
-
-async function recordCallbackAttempt(env: Env, expressionId: string, attempt: CallbackAttempt): Promise<void> {
-  await objectFetch(
-    env,
-    expressionId,
-    "/callback-attempt",
-    new Request("https://expression/callback-attempt", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(attempt)
-    })
-  );
 }
 
 async function staticAssetResponse(request: Request, env: Env): Promise<Response> {

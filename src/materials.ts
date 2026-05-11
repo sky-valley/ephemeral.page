@@ -1,9 +1,11 @@
 import { HttpError } from "./http";
 import { materialId } from "./ids";
 import type { Env, MaterialInput, StoredMaterial } from "./types";
+import { validateExternalHttpsUrl } from "./urlPolicy";
 
 const MAX_MATERIAL_BYTES = 10 * 1024 * 1024;
 const MIRROR_TIMEOUT_MS = 5_000;
+const MAX_MATERIAL_REDIRECTS = 3;
 const ALLOWED_PREFIXES = ["audio/", "image/", "video/", "text/", "application/pdf"];
 
 export async function mirrorMaterials(
@@ -60,19 +62,41 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MIRROR_TIMEOUT_MS);
   try {
-    return await fetch(url, {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: {
-        "user-agent": "ephemeral.page material mirror"
+    let current = validateExternalHttpsUrl(url, "materials[].url");
+    for (let redirects = 0; redirects <= MAX_MATERIAL_REDIRECTS; redirects += 1) {
+      const response = await fetch(current.toString(), {
+        redirect: "manual",
+        signal: controller.signal,
+        headers: {
+          "user-agent": "ephemeral.page material mirror"
+        }
+      });
+
+      if (!isRedirect(response.status)) {
+        return response;
       }
-    });
+
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new HttpError(502, "Could not fetch material: redirect missing location");
+      }
+      current = validateExternalHttpsUrl(new URL(location, current).toString(), "materials[].url redirect");
+    }
+
+    throw new HttpError(400, `Material URL exceeded ${MAX_MATERIAL_REDIRECTS} redirects`);
   } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : "unknown error";
     throw new HttpError(502, `Could not fetch material: ${message}`);
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function isRedirect(status: number): boolean {
+  return status >= 300 && status < 400;
 }
 
 export async function deleteExpressionAssets(env: Env, materials: StoredMaterial[]): Promise<void> {

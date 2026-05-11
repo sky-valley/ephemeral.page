@@ -1,21 +1,21 @@
 # ephemeral.page Current Deployment State
 
-Last verified: 2026-05-10T04:02:47Z
+Last verified: 2026-05-11T01:27:22Z
 
 This is the quick state snapshot for future agents. The longer chronological log lives in `docs/deployment-runbook.md`.
 
 ## Live Target
 
 - Public origin: `https://ephemeral.page`
-- Fallback workers.dev origin: `https://ephemeral-page.noam-1a9.workers.dev`
+- workers.dev route: disabled in Wrangler; production traffic uses `https://ephemeral.page`
 - GitHub repository: `sky-valley/ephemeral.page`
 - Current local branch at verification: `main`
 - Repo HEAD used for live verification before this documentation update: `fc9de1e`
 - Cloudflare account: `Sky Valley Ambient Computing`
 - Cloudflare account ID: `1a935388be529ecd78ebce737183a551`
 - Worker: `ephemeral-page`
-- Latest observed Worker deployment version: `f5fc3394-bef4-4474-85b1-87462388996c`
-- Latest end-to-end smoke expression id: `expr_1PKOVCWRAkLmqgtW-r`
+- Latest observed Worker deployment version: `91739cae-0846-41e2-a363-81b9455e3c52`
+- Latest end-to-end smoke expression id: `expr_ulRES7uL1-gQqlF55L`
 
 ## What Is Deployed
 
@@ -26,7 +26,7 @@ The production deployment is the Cloudflare-only MVP:
 - Generated UI is served through expression-scoped capability URLs.
 - The page only receives `window.ephemeral.submit(...)`.
 - Mirrored materials are stored privately in R2 under expression-scoped keys.
-- Optional callbacks use a Cloudflare Queue; polling remains the reliable read path.
+- Optional callbacks still exist in the currently deployed Worker; polling remains the reliable read path. The working tree contains a hardening change that disables callbacks on the next deploy.
 - Production page composition uses Workers AI with `@cf/google/gemma-4-26b-a4b-it`.
 - Local development remains deterministic with `COMPOSER=fixture` and no local AI binding.
 
@@ -40,11 +40,12 @@ Production bindings and triggers:
 
 - Durable Object namespace: `EXPRESSIONS`, class `ExpressionObject`, migration tag `v1`.
 - R2 bucket: `ephemeral-page-expression-assets`.
-- Queue producer and consumer: `ephemeral-page-callbacks`.
+- R2 lifecycle rule: `expire-expression-materials`, prefix `expressions/`, expires objects after 2 days.
+- Queue producer and consumer: `ephemeral-page-callbacks` in the currently deployed Worker. The working tree removes this binding on the next deploy.
 - Workers AI binding: `AI`.
 - Static assets binding: `ASSETS` from `./public`.
 - Custom domains: `ephemeral.page` and `www.ephemeral.page`.
-- `workers_dev = true`, so `ephemeral-page.noam-1a9.workers.dev` remains available as a fallback.
+- `workers_dev = false`, so `ephemeral-page.noam-1a9.workers.dev` is not an alternate production origin.
 
 Production vars:
 
@@ -55,7 +56,7 @@ COMPOSER=workers-ai
 WORKERS_AI_MODEL=@cf/google/gemma-4-26b-a4b-it
 ```
 
-Important: after `PUBLIC_ORIGIN` moved to `https://ephemeral.page`, smoke tests must use `EPHEMERAL_ORIGIN=https://ephemeral.page`. A smoke test against workers.dev can fail because the API correctly returns apex-domain URLs.
+Important: smoke tests must use `EPHEMERAL_ORIGIN=https://ephemeral.page`; workers.dev is intentionally not a supported production origin.
 
 ## Domain And DNS
 
@@ -82,6 +83,7 @@ Verified live at `https://ephemeral.page`:
 - `/.well-known/api-catalog` links to the OpenAPI doc and human/agent docs.
 - `/robots.txt` and `/sitemap.xml` use apex URLs.
 - `/og-image.png` serves a 1200 x 630 PNG.
+- `https://ephemeral-page.noam-1a9.workers.dev/` returns Cloudflare 404 after disabling `workers_dev`.
 
 The agent-page URLs are dynamic from `env.PUBLIC_ORIGIN`; they should not be hardcoded to workers.dev in production.
 
@@ -159,7 +161,6 @@ gh run list --repo sky-valley/ephemeral.page --limit 6
 
 ## Current Follow-Ups
 
-- Decide later whether to disable the workers.dev fallback route. Keep it enabled until the custom domain has had more real-world soak time.
 - Fix or suppress the GitHub Actions Node 20 deprecation warning before the June 2026 runner default change.
 - Monitor production create latency. Workers AI/Gemma 4 can make first expression creation take tens of seconds; add an explicit composer timeout/fallback if usage feels slow.
 - Dynamic Workers or Workers for Platforms remain future stricter isolation options, not the shipped runtime driver.

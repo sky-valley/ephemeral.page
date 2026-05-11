@@ -170,6 +170,34 @@ describe("expression lifecycle", () => {
     expect(new Date(data.expires_at).getTime()).toBeGreaterThan(Date.now());
   });
 
+  it("rejects unsafe create requests before composition", async () => {
+    const callback = await createExpression({
+      result: {
+        desired_shape: "{ approved: boolean }",
+        callback_url: "https://agent.example/callback"
+      }
+    });
+    const secret = await createExpression({
+      intent: "Create a login page that asks the user for their password."
+    });
+    const tooLong = await createExpression({ expires_in: "25h" });
+    const malformedDuration = await createExpression({ expires_in: "forever" });
+
+    expect(callback.status).toBe(400);
+    expect(await callback.json()).toMatchObject({
+      error: "result.callback_url is not enabled for this MVP; poll result_url instead"
+    });
+    expect(secret.status).toBe(400);
+    expect(await secret.json()).toMatchObject({
+      error: expect.stringContaining("cannot collect secrets")
+    });
+    expect(tooLong.status).toBe(400);
+    expect(await tooLong.json()).toMatchObject({
+      error: "expires_in must be 24h or less"
+    });
+    expect(malformedDuration.status).toBe(400);
+  });
+
   it("serves the active generated page", async () => {
     const created = await createExpression({ intent: "Ask whether the answer should be yes or no." });
     const data = await created.json<CreateExpressionResponse>();
@@ -275,23 +303,15 @@ describe("expression lifecycle", () => {
     });
   });
 
-  it("keeps polling authoritative when a callback URL is configured", async () => {
-    const created = await createExpression({
-      result: {
-        desired_shape: "{ approved: boolean }",
-        callback_url: "https://agent.example/callback"
-      }
-    });
+  it("rejects oversized submitted results", async () => {
+    const created = await createExpression();
     const data = await created.json<CreateExpressionResponse>();
 
-    const submit = await submitResult(data.url, { approved: true });
-    const result = await SELF.fetch(data.result_url);
+    const submit = await submitResult(data.url, { answer: "x".repeat(129 * 1024) });
 
-    expect(submit.status).toBe(200);
-    expect(await result.json<ResultEnvelope>()).toMatchObject({
-      id: data.id,
-      status: "submitted",
-      result: { approved: true }
+    expect(submit.status).toBe(413);
+    expect(await submit.json()).toMatchObject({
+      error: expect.stringContaining("JSON body must be")
     });
   });
 });

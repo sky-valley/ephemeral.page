@@ -1,7 +1,7 @@
 export interface Env {
   EXPRESSIONS: DurableObjectNamespace;
+  CREATE_RATE_LIMITER: DurableObjectNamespace;
   EXPRESSION_ASSETS: R2Bucket;
-  CALLBACK_QUEUE: Queue<CallbackMessage>;
   ASSETS?: Fetcher;
   AI?: Ai;
   PUBLIC_ORIGIN?: string;
@@ -33,6 +33,10 @@ export interface CreateExpressionRequest {
   materials?: MaterialInput[];
   result?: {
     desired_shape?: string;
+    /**
+     * Reserved for a future signed-webhook API. The MVP rejects this field and
+     * uses polling as the only result-delivery path.
+     */
     callback_url?: string;
   };
   expires_in?: string;
@@ -58,7 +62,6 @@ export interface ExpressionState {
   status: ExpressionStatus;
   intent: string;
   desiredShape?: string;
-  callbackUrl?: string;
   createdAt: string;
   expiresAt: string;
   submittedAt?: string;
@@ -69,7 +72,6 @@ export interface ExpressionState {
   page: PageComposition;
   result?: unknown;
   cleanup: CleanupState;
-  callbackAttempts: CallbackAttempt[];
 }
 
 export interface CleanupState {
@@ -79,17 +81,6 @@ export interface CleanupState {
   resultPurged: boolean;
   lastAttemptAt?: string;
   errors: string[];
-}
-
-export interface CallbackAttempt {
-  attemptedAt: string;
-  status: "success" | "failure";
-  statusCode?: number;
-  error?: string;
-}
-
-export interface CallbackMessage {
-  expressionId: string;
 }
 
 export interface ResultEnvelope {
@@ -109,9 +100,4 @@ export interface StatusEnvelope {
 
 export interface InternalCreatePayload {
   state: ExpressionState;
-}
-
-export interface CallbackPayload {
-  callbackUrl?: string;
-  result?: ResultEnvelope;
 }

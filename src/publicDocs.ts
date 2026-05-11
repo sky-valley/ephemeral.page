@@ -171,7 +171,7 @@ const SEARCH_PAGES: SearchPage[] = [
       {
         heading: "Later integration",
         body: [
-          "MCP integration can wrap ephemeral.page later as a tool, but it is not the core product. The core product is the public lifecycle: create page, host page, submit result, poll or callback result, expire, and clean up."
+          "MCP integration can wrap ephemeral.page later as a tool, but it is not the core product. The core product is the public lifecycle: create page, host page, submit result, poll the result, expire, and clean up."
         ]
       }
     ],
@@ -525,7 +525,6 @@ type CreateExpressionRequest = {
   }>;
   result?: {
     desired_shape?: string;
-    callback_url?: string;
   };
   expires_in?: string;
 };
@@ -536,14 +535,14 @@ Guidance:
 - \`intent\` should describe one focused human interaction.
 - \`materials[].url\` must be \`https:\`.
 - \`desired_shape\` is prose or a TypeScript-like hint for the composer, not server-side validation. The generated page decides which fields to show and the submitted \`result\` object is stored as-is.
-- \`callback_url\` is optional. Polling is always available and remains authoritative.
-- \`expires_in\` accepts compact durations such as \`10m\`, \`2h\`, or \`24h\`.
+- \`callback_url\` is reserved for a future signed-webhook API and is rejected in the MVP. Poll \`result_url\` instead.
+- \`expires_in\` accepts compact durations such as \`10m\`, \`2h\`, or \`24h\`. The maximum is \`24h\`.
 
 ## Security and lifecycle rules
 
 - Every expression has separate human and agent capabilities.
 - The human page can only call \`window.ephemeral.submit(result)\`.
-- The generated page does not receive result-read access, R2 access, Durable Object access, Queue access, AI access, cookies, or account credentials.
+- The generated page does not receive result-read access, R2 access, Durable Object access, AI access, cookies, or account credentials.
 - First valid submission wins. A second submission returns \`409\`.
 - Expired expressions reject submission.
 - Completed or expired flows are cleaned up by the platform.
@@ -655,7 +654,7 @@ Creates one expression and returns separate capability URLs for the human page a
 
 Required body field: \`intent\`.
 
-Optional body fields: \`materials\`, \`result.desired_shape\`, \`result.callback_url\`, \`expires_in\`.
+Optional body fields: \`materials\`, \`result.desired_shape\`, and \`expires_in\`.
 
 ## GET /e/:id/:view_token
 
@@ -707,7 +706,7 @@ ${searchPageLinks(origin)}
 
 ## Current status
 
-This is an early Cloudflare-only MVP. It uses capability URLs, Durable Objects, R2, Queues, and Workers AI. The public API is small: create a page, serve it, submit once, poll the result, expire and clean up.
+This is an early Cloudflare-only MVP. It uses capability URLs, Durable Objects, R2, Workers AI, and a Durable Object-backed create-rate limiter. The public API is small: create a page, serve it, submit once, poll the result, expire and clean up.
 
 Agent documentation is available at [${origin}/](${origin}/). Source code is at [github.com/sky-valley/ephemeral.page](https://github.com/sky-valley/ephemeral.page).
 `;
@@ -1160,7 +1159,11 @@ function openApi(origin: string): Record<string, unknown> {
               type: "object",
               properties: {
                 desired_shape: { type: "string" },
-                callback_url: { type: "string", format: "uri" }
+                callback_url: {
+                  type: "string",
+                  deprecated: true,
+                  description: "Reserved for a future signed-webhook API. The MVP rejects this field; poll result_url instead."
+                }
               }
             },
             expires_in: { type: "string", examples: ["30m", "2h", "24h"] }

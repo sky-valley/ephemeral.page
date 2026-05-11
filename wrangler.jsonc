@@ -4,7 +4,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-05-07",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
+  "workers_dev": false,
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
@@ -20,6 +20,10 @@
       {
         "name": "EXPRESSIONS",
         "class_name": "ExpressionObject"
+      },
+      {
+        "name": "CREATE_RATE_LIMITER",
+        "class_name": "CreateRateLimiter"
       }
     ]
   },
@@ -27,6 +31,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["ExpressionObject"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["CreateRateLimiter"]
     }
   ],
   "r2_buckets": [
@@ -35,19 +43,6 @@
       "bucket_name": "ephemeral-page-expression-assets"
     }
   ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "CALLBACK_QUEUE",
-        "queue": "ephemeral-page-callbacks"
-      }
-    ],
-    "consumers": [
-      {
-        "queue": "ephemeral-page-callbacks"
-      }
-    ]
-  },
   "observability": {
     "enabled": true
   },
@@ -75,6 +70,10 @@
           {
             "name": "EXPRESSIONS",
             "class_name": "ExpressionObject"
+          },
+          {
+            "name": "CREATE_RATE_LIMITER",
+            "class_name": "CreateRateLimiter"
           }
         ]
       },
@@ -84,19 +83,6 @@
           "bucket_name": "ephemeral-page-expression-assets"
         }
       ],
-      "queues": {
-        "producers": [
-          {
-            "binding": "CALLBACK_QUEUE",
-            "queue": "ephemeral-page-callbacks"
-          }
-        ],
-        "consumers": [
-          {
-            "queue": "ephemeral-page-callbacks"
-          }
-        ]
-      },
       "ai": {
         "binding": "AI"
       }

@@ -1,9 +1,12 @@
 import { HttpError } from "./http";
 import type { CreateExpressionRequest, MaterialInput } from "./types";
+import { validateExternalHttpsUrl } from "./urlPolicy";
 
 const MAX_INTENT_LENGTH = 4_000;
 const MAX_DESIRED_SHAPE_LENGTH = 1_000;
 const MAX_MATERIALS = 5;
+const MAX_MATERIAL_TYPE_LENGTH = 80;
+const MAX_MATERIAL_LABEL_LENGTH = 200;
 
 export function validateCreateRequest(input: CreateExpressionRequest): CreateExpressionRequest {
   if (!input || typeof input !== "object") {
@@ -18,8 +21,22 @@ export function validateCreateRequest(input: CreateExpressionRequest): CreateExp
     throw new HttpError(400, `intent must be ${MAX_INTENT_LENGTH} characters or fewer`);
   }
 
-  if (input.result?.desired_shape && input.result.desired_shape.length > MAX_DESIRED_SHAPE_LENGTH) {
-    throw new HttpError(400, `result.desired_shape must be ${MAX_DESIRED_SHAPE_LENGTH} characters or fewer`);
+  if (input.result !== undefined) {
+    if (!input.result || typeof input.result !== "object" || Array.isArray(input.result)) {
+      throw new HttpError(400, "result must be an object");
+    }
+
+    if (input.result.desired_shape !== undefined && typeof input.result.desired_shape !== "string") {
+      throw new HttpError(400, "result.desired_shape must be a string");
+    }
+
+    if (input.result.desired_shape && input.result.desired_shape.length > MAX_DESIRED_SHAPE_LENGTH) {
+      throw new HttpError(400, `result.desired_shape must be ${MAX_DESIRED_SHAPE_LENGTH} characters or fewer`);
+    }
+
+    if (input.result.callback_url !== undefined) {
+      throw new HttpError(400, "result.callback_url is not enabled for this MVP; poll result_url instead");
+    }
   }
 
   if (input.materials !== undefined) {
@@ -34,38 +51,11 @@ export function validateCreateRequest(input: CreateExpressionRequest): CreateExp
     input.materials.forEach(validateMaterial);
   }
 
-  if (input.result?.callback_url) {
-    validateCallbackUrl(input.result.callback_url);
-  }
-
   return {
     ...input,
     intent: input.intent.trim(),
     materials: input.materials ?? []
   };
-}
-
-export function validateCallbackUrl(value: string): URL {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new HttpError(400, "result.callback_url must be a valid URL");
-  }
-
-  if (url.protocol !== "https:") {
-    throw new HttpError(400, "result.callback_url must use https");
-  }
-
-  if (url.username || url.password || url.hash) {
-    throw new HttpError(400, "result.callback_url cannot include credentials or a fragment");
-  }
-
-  if (value.length > 2_048) {
-    throw new HttpError(400, "result.callback_url is too long");
-  }
-
-  return url;
 }
 
 function validateMaterial(material: MaterialInput, index: number): void {
@@ -77,22 +67,21 @@ function validateMaterial(material: MaterialInput, index: number): void {
     throw new HttpError(400, `materials[${index}].type is required`);
   }
 
+  if (material.type.length > MAX_MATERIAL_TYPE_LENGTH) {
+    throw new HttpError(400, `materials[${index}].type must be ${MAX_MATERIAL_TYPE_LENGTH} characters or fewer`);
+  }
+
   if (typeof material.url !== "string" || !material.url.trim()) {
     throw new HttpError(400, `materials[${index}].url is required`);
   }
 
-  let url: URL;
-  try {
-    url = new URL(material.url);
-  } catch {
-    throw new HttpError(400, `materials[${index}].url must be a valid URL`);
-  }
-
-  if (url.protocol !== "https:") {
-    throw new HttpError(400, `materials[${index}].url must use https`);
-  }
+  validateExternalHttpsUrl(material.url, `materials[${index}].url`);
 
   if (material.label !== undefined && typeof material.label !== "string") {
     throw new HttpError(400, `materials[${index}].label must be a string`);
+  }
+
+  if (material.label && material.label.length > MAX_MATERIAL_LABEL_LENGTH) {
+    throw new HttpError(400, `materials[${index}].label must be ${MAX_MATERIAL_LABEL_LENGTH} characters or fewer`);
   }
 }

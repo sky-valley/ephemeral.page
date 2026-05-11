@@ -1,11 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { verifyCapability } from "./capabilities";
-import { html, json, parseJson } from "./http";
+import { errorResponse, json, parseJson } from "./http";
+import { MAX_INTERNAL_CREATE_BODY_BYTES, MAX_SUBMIT_BODY_BYTES } from "./limits";
 import { deleteExpressionAssets } from "./materials";
 import { activePage, terminalPage } from "./page";
 import type {
-  CallbackAttempt,
-  CallbackPayload,
   Env,
   ExpressionState,
   ResultEnvelope,
@@ -20,11 +19,19 @@ export class ExpressionObject extends DurableObject<Env> {
   }
 
   override async fetch(request: Request): Promise<Response> {
+    try {
+      return await this.route(request);
+    } catch (error) {
+      return errorResponse(error);
+    }
+  }
+
+  private async route(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
     if (request.method === "POST" && path === "/create") {
-      const payload = await parseJson<{ state: ExpressionState }>(request);
+      const payload = await parseJson<{ state: ExpressionState }>(request, { maxBytes: MAX_INTERNAL_CREATE_BODY_BYTES });
       await this.create(payload.state);
       return json({ ok: true });
     }
@@ -39,7 +46,7 @@ export class ExpressionObject extends DurableObject<Env> {
     }
 
     if (request.method === "POST" && path === "/submit") {
-      const payload = await parseJson<{ result: unknown }>(request);
+      const payload = await parseJson<{ result: unknown }>(request, { maxBytes: MAX_SUBMIT_BODY_BYTES });
       return this.submit(url.searchParams.get("token"), payload.result);
     }
 
@@ -49,16 +56,6 @@ export class ExpressionObject extends DurableObject<Env> {
 
     if (request.method === "GET" && path === "/result") {
       return this.result(url.searchParams.get("token"));
-    }
-
-    if (request.method === "POST" && path === "/callback-payload") {
-      return json(await this.callbackPayload());
-    }
-
-    if (request.method === "POST" && path === "/callback-attempt") {
-      const attempt = await parseJson<CallbackAttempt>(request);
-      await this.recordCallbackAttempt(attempt);
-      return json({ ok: true });
     }
 
     return json({ error: "Not found" }, { status: 404 });
@@ -145,10 +142,6 @@ export class ExpressionObject extends DurableObject<Env> {
     await this.ctx.storage.put(STATE_KEY, state);
     await this.scheduleNextAlarm(state);
 
-    if (state.callbackUrl) {
-      await this.env.CALLBACK_QUEUE.send({ expressionId: state.id });
-    }
-
     return json({
       id: state.id,
       status: "submitted",
@@ -172,25 +165,6 @@ export class ExpressionObject extends DurableObject<Env> {
     }
 
     return json(resultEnvelope(state));
-  }
-
-  private async callbackPayload(): Promise<CallbackPayload> {
-    const state = await this.ensureFreshState();
-    if (!state || !state.callbackUrl) {
-      return {};
-    }
-
-    return {
-      callbackUrl: state.callbackUrl,
-      result: resultEnvelope(state)
-    };
-  }
-
-  private async recordCallbackAttempt(attempt: CallbackAttempt): Promise<void> {
-    const state = await this.ctx.storage.get<ExpressionState>(STATE_KEY);
-    if (!state) return;
-    state.callbackAttempts.push(attempt);
-    await this.ctx.storage.put(STATE_KEY, state);
   }
 
   private async ensureFreshState(): Promise<ExpressionState | undefined> {

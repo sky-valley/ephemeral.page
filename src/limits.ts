@@ -1,0 +1,14 @@
+export const MAX_CREATE_BODY_BYTES = 64 * 1024;
+export const MAX_SUBMIT_BODY_BYTES = 128 * 1024;
+export const MAX_INTERNAL_CREATE_BODY_BYTES = 512 * 1024;
+
+export const MAX_EXPRESSION_LIFETIME_MS = 24 * 60 * 60 * 1000;
+export const MAX_EXPRESSION_LIFETIME_LABEL = "24h";
+
+export const CREATE_RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
+export const CREATE_RATE_LIMIT_MAX = 30;
+
+export const MAX_PAGE_TITLE_LENGTH = 120;
+export const MAX_PAGE_BODY_HTML_LENGTH = 32 * 1024;
+export const MAX_PAGE_CSS_LENGTH = 16 * 1024;
+export const MAX_PAGE_SCRIPT_LENGTH = 16 * 1024;
