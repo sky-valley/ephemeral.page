@@ -1,6 +1,6 @@
 # ephemeral.page Current Deployment State
 
-Last verified: 2026-05-11T02:01:05Z
+Last verified: 2026-05-11T02:13:05Z
 
 This is the quick state snapshot for future agents. The longer chronological log lives in `docs/deployment-runbook.md`.
 
@@ -10,12 +10,12 @@ This is the quick state snapshot for future agents. The longer chronological log
 - workers.dev route: disabled in Wrangler; production traffic uses `https://ephemeral.page`
 - GitHub repository: `sky-valley/ephemeral.page`
 - Current local branch at verification: `main`
-- Repo HEAD used for live verification before this documentation update: `13b7fba`
+- Repo HEAD used for live verification before this documentation update: `11ff8b4`
 - Cloudflare account: `Sky Valley Ambient Computing`
 - Cloudflare account ID: `1a935388be529ecd78ebce737183a551`
 - Worker: `ephemeral-page`
-- Latest observed Worker deployment version: `9d4ac37b-265a-4cce-9049-0757b29d32c4`
-- Latest end-to-end smoke expression id: `expr_1txAqR30j8KP0haMVr`
+- Latest observed Worker deployment version: `78e27398-6c19-4465-a9e7-06fdd8945357`
+- Latest end-to-end smoke expression id: `expr__ioZHtjBAGvhqSaU16`
 
 ## What Is Deployed
 
@@ -103,10 +103,12 @@ Recent successful runs:
 - CI `25645959021` passed for commit `13b7fba`.
 - Deploy `25645959012` passed for commit `13b7fba` after rerunning with the corrected Cloudflare API token. Latest successful job ID: `75276010590`.
 - The Cloudflare API token `ephemeral-page-github-actions` now carries the required five permissions: Workers Scripts Write, Workers R2 Storage Write, Workers AI Write, Account Settings Read, and `ephemeral.page` Workers Routes Write. The stale Queues Write permission was removed.
+- CI `25646699795` and Deploy `25646699783` passed for commit `11ff8b4`.
+- Deploy `25646699783` used the direct `npm run deploy` step and no longer emitted the GitHub Actions `Node.js 20` action-runtime deprecation annotation.
 
 Known CI follow-up:
 
-- Confirm the next GitHub CI and Deploy runs complete without the Node.js 20 action runtime deprecation annotation.
+- `npm run check` on GitHub still logs Node's `DEP0040` `punycode` deprecation warning from the test/runtime stack. This is separate from the fixed GitHub Actions Node 20 runtime annotation.
 
 ## Re-Verify From Scratch
 
@@ -161,6 +163,7 @@ gh run list --repo sky-valley/ephemeral.page --limit 6
 - Deployed commit `13b7fba` with security hardening, rate limiting, callbacks disabled, R2 lifecycle cleanup, and package updates.
 - Deleted the stale `ephemeral-page-callbacks` queue after it had zero producers and zero consumers.
 - Corrected the GitHub deploy token so CI can reconcile custom-domain Worker routes and confirmed the deploy job passes.
+- Removed the remaining Node 20-targeted Cloudflare deploy action from GitHub Actions and confirmed direct Wrangler deploy works from CI.
 
 ## Current Follow-Ups
 

@@ -216,6 +216,11 @@ Keep `workers_dev = false` in `wrangler.jsonc` now that custom-domain DNS, certi
 - Updated CI and Deploy workflows from `actions/checkout@v4` / `actions/setup-node@v4` to `actions/checkout@v6` / `actions/setup-node@v6`.
 - Kept the project test runtime on Node 22 because Cloudflare tooling in this repo currently requires Node >=22 and the Node 20 deprecation was about action runtimes, not the project Node used by `npm run check`.
 - Replaced `cloudflare/wrangler-action@v3` with `npm run deploy`, passing `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as step environment variables. This keeps deployment on the pinned repo `wrangler` package and avoids the remaining Node 20-targeted JavaScript action.
+- Pushed commit `11ff8b4` (`Deploy with direct Wrangler CLI`) to `main`.
+- GitHub CI run `25646699795` passed on `11ff8b4`.
+- GitHub Deploy run `25646699783` passed on `11ff8b4`, used the direct `npm run deploy` shell step, and no longer emitted the GitHub Actions `Node.js 20` action-runtime deprecation annotation.
+- Latest observed deployment version after the direct Wrangler deploy: `78e27398-6c19-4465-a9e7-06fdd8945357`.
+- Remote smoke passed against `https://ephemeral.page` after the direct Wrangler deploy. Smoke expression id: `expr__ioZHtjBAGvhqSaU16`.
 
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
