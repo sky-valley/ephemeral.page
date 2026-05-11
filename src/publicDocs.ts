@@ -1,9 +1,9 @@
 import { escapeHtml } from "./escape";
 import { noStoreHeaders } from "./http";
 
-const UPDATED_AT = "2026-05-09";
+const UPDATED_AT = "2026-05-11";
 const HUMAN_PAGE_TITLE = "ephemeral.page - temporary pages for agent-to-human moments";
-const HUMAN_PAGE_DESCRIPTION = "Agents create a small public page, ask a person for one focused response, capture it, and move on.";
+const HUMAN_PAGE_DESCRIPTION = "Agents create a small public page, ask a person for one focused response, and keep the interaction temporary and capability-bound.";
 const HUMAN_OG_ALT = "ephemeral.page turns one focused agent question into a temporary public web page for a human response.";
 
 interface SearchPage {
@@ -388,6 +388,23 @@ Use it when you need one atomic human interaction:
 
 Do not use it for long-lived apps, multi-step workflows, secrets, payments, or anything that needs a user account.
 
+## Security posture
+
+ephemeral.page is built to reject unsafe work before a page is made. Create requests are checked before material mirroring or composition; generated output is checked again before it is served.
+
+Current controls:
+
+- separate human and agent capability URLs
+- token hashes stored at rest, never plaintext capabilities
+- public create requests rate-limited before material handling
+- requests for secrets, logins, impersonation, dark patterns, or automatic submission rejected
+- generated pages can call only \`window.ephemeral.submit(result)\`
+- no result-read, R2, Durable Object, Workers AI, secret, cookie, storage, or account access in generated pages
+- HTTPS-only materials mirrored to private R2 and served through expression-scoped routes
+- strict CSP, \`no-store\`, \`no-referrer\`, \`nosniff\`, and frame denial on served pages
+- callbacks disabled; agents poll private status/result URLs
+- maximum lifetime is 24h, with cleanup after submit or expiry
+
 ## Fast path
 
 Create an expression with \`POST /api/expressions\`.
@@ -541,8 +558,9 @@ Guidance:
 ## Security and lifecycle rules
 
 - Every expression has separate human and agent capabilities.
+- Capability tokens are bearer secrets; share only the human URL with the human.
 - The human page can only call \`window.ephemeral.submit(result)\`.
-- The generated page does not receive result-read access, R2 access, Durable Object access, AI access, cookies, or account credentials.
+- The generated page does not receive result-read access, R2 access, Durable Object access, AI access, cookies, storage, or account credentials.
 - First valid submission wins. A second submission returns \`409\`.
 - Expired expressions reject submission.
 - Completed or expired flows are cleaned up by the platform.
@@ -700,6 +718,14 @@ A chat message is not always the right surface. A full application is too much. 
 
 It is not a workflow engine, a persistent app host, or an account system. Each page is atomic: one question, one task, one approval, one review, one focused action.
 
+## Security posture
+
+ephemeral.page is designed to say no early. Requests for secrets, logins, impersonation, dark patterns, or automatic submission are rejected before a page is made.
+
+Each page can submit one response and nothing else. It does not receive account credentials, result access, cookies, browser storage, or privileged platform bindings.
+
+Human and agent links are separate capabilities. Pages expire within 24 hours, and completed flows close immediately.
+
 ## Read next
 
 ${searchPageLinks(origin)}
@@ -812,6 +838,18 @@ function humanHtml(origin: string): string {
     <section>
       <h2>Boundary</h2>
       <p>Each page is atomic: one question, one task, one approval, one review, or one focused action. It is not a workflow engine or a persistent app host.</p>
+    </section>
+
+    <section>
+      <h2>Trust</h2>
+      <ul>
+        <li>unsafe requests are rejected before page creation</li>
+        <li>generated pages can only submit one response</li>
+        <li>human and agent links are separate capabilities</li>
+        <li>agent result links stay private</li>
+        <li>pages expire within 24 hours</li>
+        <li>completed flows close immediately</li>
+      </ul>
     </section>
 
     <section>

@@ -18,6 +18,8 @@ describe("expression lifecycle", () => {
     expect(body).toContain("POST /api/expressions");
     expect(body).toContain("Headless human submission");
     expect(body).toContain("Complete headless smoke");
+    expect(body).toContain("## Security posture");
+    expect(body).toContain("generated output is checked again before it is served");
     expect(body).toContain("The final path segment is the `view_token`");
     expect(body).toContain("not server-side validation");
     expect(body).toContain("After your first successful surface");
@@ -51,6 +53,8 @@ describe("expression lifecycle", () => {
     expect(html.headers.get("content-type")).toContain("text/html");
     expect(html.headers.get("cache-control")).toBe("public, max-age=300");
     expect(htmlBody).toContain("Temporary pages for one human response.");
+    expect(htmlBody).toContain("<h2>Trust</h2>");
+    expect(htmlBody).toContain("unsafe requests are rejected before page creation");
     expect(htmlBody).toContain("<title>ephemeral.page - temporary pages for agent-to-human moments</title>");
     expect(htmlBody).toContain('property="og:title"');
     expect(htmlBody).toContain(`${ORIGIN}/og-image.png`);
@@ -63,6 +67,7 @@ describe("expression lifecycle", () => {
     expect(markdown.headers.get("content-type")).toContain("text/markdown");
     expect(markdownBody).toContain("# ephemeral.page");
     expect(markdownBody).toContain("ephemeral.page gives software agents");
+    expect(markdownBody).toContain("## Security posture");
   });
 
   it("serves search-oriented explainer pages for classic and AI retrieval", async () => {
