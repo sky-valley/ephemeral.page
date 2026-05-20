@@ -28,8 +28,20 @@ export interface StoredMaterial {
   size: number;
 }
 
+export type ExpressionMode = "interactive" | "preview";
+
 export interface CreateExpressionRequest {
   intent: string;
+  /**
+   * `preview` renders supplied content as static/read-only material and only
+   * collects the declared result shape.
+   */
+  mode?: ExpressionMode;
+  /**
+   * Compatibility alias for preview mode. `false` is equivalent to
+   * `mode: "preview"`.
+   */
+  interactive?: boolean;
   materials?: MaterialInput[];
   result?: {
     desired_shape?: string;
@@ -60,6 +72,7 @@ export interface PageComposition {
 export interface ExpressionState {
   id: string;
   status: ExpressionStatus;
+  mode?: ExpressionMode;
   intent: string;
   desiredShape?: string;
   createdAt: string;

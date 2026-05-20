@@ -1,7 +1,8 @@
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
+import worker from "../src/index";
 import { classifyComposition, classifyCreateRequest } from "../src/policy";
-import type { CreateExpressionResponse, ResultEnvelope } from "../src/types";
+import type { CreateExpressionResponse, Env, ResultEnvelope } from "../src/types";
 
 const ORIGIN = "http://localhost:8787";
 
@@ -142,6 +143,7 @@ describe("expression lifecycle", () => {
     const robotsBody = await robots.text();
     const sitemap = await SELF.fetch(`${ORIGIN}/sitemap.xml`);
     const sitemapBody = await sitemap.text();
+    const sitemapUrls = [...sitemapBody.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 
     expect(robots.status).toBe(200);
     expect(robotsBody).toContain("Content-Signal: ai-train=no, search=yes, ai-input=yes");
@@ -155,10 +157,30 @@ describe("expression lifecycle", () => {
     expect(robotsBody).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`);
     expect(sitemap.status).toBe(200);
     expect(sitemap.headers.get("content-type")).toContain("application/xml");
-    expect(sitemapBody).toContain(`<loc>${ORIGIN}/humans.html</loc>`);
-    expect(sitemapBody).toContain(`<loc>${ORIGIN}/what-is-ephemeral-page</loc>`);
-    expect(sitemapBody).toContain(`<loc>${ORIGIN}/compare/mcp-ui</loc>`);
+    expect(sitemapUrls).toEqual([
+      `${ORIGIN}/humans.html`,
+      `${ORIGIN}/what-is-ephemeral-page`,
+      `${ORIGIN}/for-agents`,
+      `${ORIGIN}/compare/human-in-the-loop`,
+      `${ORIGIN}/compare/form-builders`,
+      `${ORIGIN}/compare/mcp-ui`
+    ]);
+    expect(sitemapUrls).not.toContain(`${ORIGIN}/`);
+    expect(sitemapUrls).not.toContain(`${ORIGIN}/llms.txt`);
+    expect(sitemapUrls).not.toContain(`${ORIGIN}/openapi.json`);
     expect(sitemapBody).toContain("<priority>1.0</priority>");
+  });
+
+  it("redirects www and http requests to the canonical apex origin", async () => {
+    const productionEnv = { PUBLIC_ORIGIN: "https://ephemeral.page" } as Env;
+
+    const www = await worker.fetch(new Request("https://www.ephemeral.page/sitemap.xml?source=gsc"), productionEnv);
+    const http = await worker.fetch(new Request("http://ephemeral.page/humans.html"), productionEnv);
+
+    expect(www.status).toBe(301);
+    expect(www.headers.get("location")).toBe("https://ephemeral.page/sitemap.xml?source=gsc");
+    expect(http.status).toBe(301);
+    expect(http.headers.get("location")).toBe("https://ephemeral.page/humans.html");
   });
 
   it("creates an expression and returns capability URLs", async () => {
@@ -171,6 +193,87 @@ describe("expression lifecycle", () => {
     expect(data.result_url).toContain(`/api/expressions/${data.id}/result?token=`);
     expect(data.status_url).toContain(`/api/expressions/${data.id}/status?token=`);
     expect(new Date(data.expires_at).getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("creates static email preview expressions that mention passwords and logins", async () => {
+    const intent = `Render the email below as a static preview card, then ask the reviewer to approve-and-send or request changes.
+
+From: Acme HR <hr@acme.example>
+Subject: Your Workday account is ready
+
+Your account is ready. Sign in to Workday with your company email.
+Enter your temporary password after you sign in for the first time.
+I'll send your temporary password separately.`;
+
+    expect(classifyCreateRequest({
+      intent,
+      result: {
+        desired_shape: "{ decision: 'approve-and-send' | 'request-changes', notes?: string }"
+      }
+    }).action).toBe("allow");
+
+    const response = await createExpression({
+      intent,
+      result: {
+        desired_shape: "{ decision: 'approve-and-send' | 'request-changes', notes?: string }"
+      }
+    });
+    expect(response.status).toBe(201);
+
+    const data = await response.json<CreateExpressionResponse>();
+    const page = await SELF.fetch(data.url);
+    const html = await page.text();
+
+    expect(page.status).toBe(200);
+    expect(html).toContain("Static preview");
+    expect(html).toContain("Enter your temporary password");
+    expect(html).toContain("temporary password separately");
+    expect(html).not.toContain("Render the email below");
+    expect(html).toContain('name="decision"');
+    expect(html).toContain('name="notes"');
+    expect(html).not.toContain('name="password"');
+    expect(html).not.toContain("type=\"password\"");
+    expect(html).not.toContain("<a ");
+  });
+
+  it("allows explicit preview mode but rejects secret result fields", () => {
+    expect(classifyCreateRequest({
+      mode: "preview",
+      intent: "Show this already-written onboarding email as a preview. It says the recipient can sign in and that a password arrives separately.",
+      result: {
+        desired_shape: "{ decision: string, notes?: string }"
+      }
+    }).action).toBe("allow");
+
+    expect(classifyCreateRequest({
+      interactive: false,
+      intent: "Show this account-ready email as static preview content.",
+      result: {
+        desired_shape: "{ decision: string, notes?: string }"
+      }
+    }).action).toBe("allow");
+
+    expect(classifyCreateRequest({
+      mode: "preview",
+      intent: "Show a static preview card, then ask the reviewer to paste an API key in notes.",
+      result: {
+        desired_shape: "{ decision: string, notes?: string }"
+      }
+    })).toMatchObject({
+      action: "reject",
+      labels: ["collects-secrets"]
+    });
+
+    expect(classifyCreateRequest({
+      mode: "preview",
+      intent: "Show this account-ready email as static preview content.",
+      result: {
+        desired_shape: "{ password: string }"
+      }
+    })).toMatchObject({
+      action: "reject",
+      labels: ["secret-result-shape"]
+    });
   });
 
   it("allows benign reports that mention sensitive terms without collecting them", () => {
@@ -207,6 +310,19 @@ describe("expression lifecycle", () => {
     const secret = await createExpression({
       intent: "Create a login page that asks the user for their password."
     });
+    const secretShape = await createExpression({
+      mode: "preview",
+      intent: "Render the email below as a static preview card.",
+      result: {
+        desired_shape: "{ password: string }"
+      }
+    });
+    const functionalLogin = await createExpression({
+      intent: "Render a functional third-party login form for Example SaaS.",
+      result: {
+        desired_shape: "{ decision: string }"
+      }
+    });
     const tooLong = await createExpression({ expires_in: "25h" });
     const malformedDuration = await createExpression({ expires_in: "forever" });
 
@@ -217,6 +333,14 @@ describe("expression lifecycle", () => {
     expect(secret.status).toBe(400);
     expect(await secret.json()).toMatchObject({
       error: expect.stringContaining("cannot collect secrets")
+    });
+    expect(secretShape.status).toBe(400);
+    expect(await secretShape.json()).toMatchObject({
+      error: expect.stringContaining("cannot collect secrets")
+    });
+    expect(functionalLogin.status).toBe(400);
+    expect(await functionalLogin.json()).toMatchObject({
+      error: expect.stringContaining("cannot create login")
     });
     expect(tooLong.status).toBe(400);
     expect(await tooLong.json()).toMatchObject({

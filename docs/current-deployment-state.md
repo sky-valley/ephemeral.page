@@ -46,6 +46,7 @@ Production bindings and triggers:
 - Workers AI binding: `AI`.
 - Static assets binding: `ASSETS` from `./public`.
 - Custom domains: `ephemeral.page` and `www.ephemeral.page`.
+- `www.ephemeral.page` and plain-HTTP apex requests redirect permanently to `https://ephemeral.page`.
 - `workers_dev = false`, so `ephemeral-page.noam-1a9.workers.dev` is not an alternate production origin.
 
 Production vars:
@@ -82,7 +83,8 @@ Verified live at `https://ephemeral.page`:
 - `/humans.html` serves the human page with canonical, OG, Twitter, and JSON-LD metadata using apex URLs.
 - `/openapi.json` serves OpenAPI 3.1 with `servers[0].url = https://ephemeral.page`.
 - `/.well-known/api-catalog` links to the OpenAPI doc and human/agent docs.
-- `/robots.txt` and `/sitemap.xml` use apex URLs.
+- `/robots.txt` uses apex URLs and advertises `https://ephemeral.page/sitemap.xml`.
+- `/sitemap.xml` contains only the human overview and focused HTML search pages.
 - `/og-image.png` serves a 1200 x 630 PNG.
 - `https://ephemeral-page.noam-1a9.workers.dev/` returns Cloudflare 404 after disabling `workers_dev`.
 

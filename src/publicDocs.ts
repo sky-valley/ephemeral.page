@@ -349,12 +349,7 @@ export function robotsResponse(origin: string): Response {
 export function sitemapResponse(origin: string): Response {
   const urls = [
     { path: "/humans.html", changefreq: "weekly", priority: "1.0" },
-    { path: "/", changefreq: "weekly", priority: "0.9" },
-    ...SEARCH_PAGES.map((page) => ({ path: page.path, changefreq: "weekly", priority: "0.8" })),
-    { path: "/llms.txt", changefreq: "weekly", priority: "0.6" },
-    { path: "/llms-full.txt", changefreq: "weekly", priority: "0.6" },
-    { path: "/openapi.json", changefreq: "weekly", priority: "0.5" },
-    { path: "/.well-known/api-catalog", changefreq: "weekly", priority: "0.5" }
+    ...SEARCH_PAGES.map((page) => ({ path: page.path, changefreq: "weekly", priority: "0.8" }))
   ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -552,6 +547,8 @@ Expected final output:
 \`\`\`ts
 type CreateExpressionRequest = {
   intent: string;
+  mode?: "interactive" | "preview";
+  interactive?: boolean;
   materials?: Array<{
     type: string;
     url: string;
@@ -567,8 +564,10 @@ type CreateExpressionRequest = {
 Guidance:
 
 - \`intent\` should describe one focused human interaction.
+- Use \`mode: "preview"\` or \`interactive: false\` for already-written content that should render as a static preview before collecting a small review result.
 - \`materials[].url\` must be \`https:\`.
 - \`desired_shape\` is prose or a TypeScript-like hint for the composer, not server-side validation. The generated page decides which fields to show and the submitted \`result\` object is stored as-is.
+- Preview mode can render copy that mentions passwords, account setup, sign-in steps, or SaaS brands, but \`desired_shape\` must not declare secret-like fields such as passwords, API keys, OAuth codes, or tokens.
 - \`callback_url\` is reserved for a future signed-webhook API and is rejected in the MVP. Poll \`result_url\` instead.
 - \`expires_in\` accepts compact durations such as \`10m\`, \`2h\`, or \`24h\`. The maximum is \`24h\`.
 
@@ -689,7 +688,7 @@ Creates one expression and returns separate capability URLs for the human page a
 
 Required body field: \`intent\`.
 
-Optional body fields: \`materials\`, \`result.desired_shape\`, and \`expires_in\`.
+Optional body fields: \`mode\`, \`interactive\`, \`materials\`, \`result.desired_shape\`, and \`expires_in\`.
 
 ## GET /e/:id/:view_token
 
@@ -1197,6 +1196,15 @@ function openApi(origin: string): Record<string, unknown> {
           required: ["intent"],
           properties: {
             intent: { type: "string" },
+            mode: {
+              type: "string",
+              enum: ["interactive", "preview"],
+              description: "Set to preview for static, non-interactive content previews that only collect the declared result shape."
+            },
+            interactive: {
+              type: "boolean",
+              description: "Set false as a compatibility alias for mode: preview."
+            },
             materials: {
               type: "array",
               items: {

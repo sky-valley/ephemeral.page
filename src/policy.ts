@@ -4,7 +4,9 @@ import {
   MAX_PAGE_SCRIPT_LENGTH,
   MAX_PAGE_TITLE_LENGTH
 } from "./limits";
-import type { CreateExpressionRequest, PageComposition } from "./types";
+import { extractPreviewInstructionText, shouldUsePreviewMode } from "./preview";
+import { desiredShapeHasSecretField } from "./resultShape";
+import type { CreateExpressionRequest, ExpressionMode, PageComposition } from "./types";
 
 export interface PolicyDecision {
   action: "allow" | "reject";
@@ -20,8 +22,19 @@ interface TextRule {
 }
 
 const SENSITIVE_COLLECTION_REASON = "Expressions cannot collect secrets, passwords, private keys, seed phrases, OAuth codes, or API keys.";
+const LOGIN_OR_IMPERSONATION_REASON = "Expressions cannot create login, identity-verification, or brand-impersonation pages.";
 const SENSITIVE_TERMS = /\b(password|passcode|api key|secret key|private key|seed phrase|recovery phrase|oauth|2fa|mfa|verification code|one-time code|ssn|social security|credit card|card number|cvv|bank account|routing number)\b/i;
 const COLLECTION_ACTIONS = /\b(ask|asks|asking|collect|collects|enter|provide|paste|type|submit|share|send|request|capture|upload|verify|fill in|input)\b/i;
+const SECRET_FIELD_TERMS = /\b(password|passcode|api key|secret key|private key|seed phrase|recovery phrase|oauth|2fa|mfa|verification code|one-time code|ssn|social security|credit card|card number|cvv|bank account|routing number)\b/i;
+const HUMAN_WORDS = /\b(user|human|reviewer|recipient|visitor|employee|candidate|person|customer)\b/i;
+const DIRECT_COLLECTION_ACTIONS = /\b(ask|asks|asking|prompt|prompts|require|requires|collect|collects|capture|captures|request|requests|store|stores|save|saves)\b/i;
+const DIRECT_ENTRY_ACTIONS = /\b(enter|provide|paste|type|submit|share|send|upload|input|fill in)\b/i;
+const SECRET_ENTRY_ACTIONS = /\b(enter|provide|paste|type|submit|share|upload|input|fill in)\b/i;
+const PAGE_ACTIONS = /\b(build|create|make|host|serve|render|design|generate)\b/i;
+const LOGIN_TERMS = /\b(login|log in|sign in|signin|sign-in|identity[- ]verification|verify your identity|verify identity)\b/i;
+const PAGE_TERMS = /\b(page|form|flow|screen)\b/i;
+const BRAND_LOGIN_TERMS = /\b(github|google|microsoft|okta|stripe|bank|slack|salesforce|workday|adp|atlassian|figma|notion)\b[^.!?\n]{0,80}\b(login|log in|sign in|signin|sign-in)\b/i;
+const IMPERSONATION_TERMS = /\b(impersonate|make it look like|pretend to be|clone|brand[- ]impersonation|third[- ]party login)\b/i;
 
 const INPUT_RULES: TextRule[] = [
   {
@@ -31,8 +44,8 @@ const INPUT_RULES: TextRule[] = [
   },
   {
     label: "login-or-impersonation",
-    reason: "Expressions cannot create login, identity-verification, or brand-impersonation pages.",
-    pattern: /\b(login|log in|sign in|verify your identity|impersonate|make it look like|pretend to be|github login|google login|stripe login|bank login)\b/i
+    reason: LOGIN_OR_IMPERSONATION_REASON,
+    matches: asksForLoginOrImpersonation
   },
   {
     label: "deceptive-ui",
@@ -98,13 +111,33 @@ const OUTPUT_RULES: Array<{ label: string; reason: string; pattern: RegExp; fiel
   }
 ];
 
+export interface CompositionPolicyOptions {
+  mode?: ExpressionMode;
+}
+
 export function classifyCreateRequest(input: CreateExpressionRequest): PolicyDecision {
+  if (desiredShapeHasSecretField(input.result?.desired_shape)) {
+    return reject("secret-result-shape", SENSITIVE_COLLECTION_REASON);
+  }
+
   const materialText = (input.materials ?? []).map((material) => `${material.type} ${material.label ?? ""} ${material.url}`).join("\n");
-  const text = [input.intent, input.result?.desired_shape ?? "", materialText].join("\n");
+
+  if (shouldUsePreviewMode(input)) {
+    const text = [extractPreviewInstructionText(input.intent), materialText].join("\n");
+    if (asksForSensitiveCredentialCollection(text)) {
+      return reject("collects-secrets", SENSITIVE_COLLECTION_REASON);
+    }
+    if (asksForLoginOrImpersonation(text)) {
+      return reject("login-or-impersonation", LOGIN_OR_IMPERSONATION_REASON);
+    }
+    return { action: "allow", labels: [] };
+  }
+
+  const text = [input.intent, materialText].join("\n");
   return classifyText(text, INPUT_RULES);
 }
 
-export function classifyComposition(page: PageComposition): PolicyDecision {
+export function classifyComposition(page: PageComposition, options: CompositionPolicyOptions = {}): PolicyDecision {
   if (page.title.length > MAX_PAGE_TITLE_LENGTH) {
     return reject("oversized-title", `Generated page title must be ${MAX_PAGE_TITLE_LENGTH} characters or fewer.`);
   }
@@ -119,6 +152,9 @@ export function classifyComposition(page: PageComposition): PolicyDecision {
   }
 
   for (const rule of OUTPUT_RULES) {
+    if (options.mode === "preview" && rule.label === "sensitive-copy") {
+      continue;
+    }
     const value = rule.field === "all" ? `${page.title}\n${page.bodyHtml}\n${page.script}` : page[rule.field];
     if (rule.pattern.test(value)) {
       return reject(rule.label, rule.reason);
@@ -147,6 +183,29 @@ function classifyText(
 function mentionsSensitiveCollection(value: string): boolean {
   const chunks = value.split(/[\n.!?;]+/);
   return chunks.some((chunk) => SENSITIVE_TERMS.test(chunk) && COLLECTION_ACTIONS.test(chunk));
+}
+
+function asksForSensitiveCredentialCollection(value: string): boolean {
+  const chunks = value.split(/[\n.!?;]+/);
+  return chunks.some((chunk) => {
+    const mentionsSecret = SECRET_FIELD_TERMS.test(chunk);
+    if (!mentionsSecret) return false;
+
+    if (DIRECT_COLLECTION_ACTIONS.test(chunk) && DIRECT_ENTRY_ACTIONS.test(chunk)) return true;
+    if (DIRECT_COLLECTION_ACTIONS.test(chunk) && HUMAN_WORDS.test(chunk)) return true;
+    if (SECRET_ENTRY_ACTIONS.test(chunk)) return true;
+    if (/\b(field|input|textarea|form)\b/i.test(chunk) && SECRET_FIELD_TERMS.test(chunk)) return true;
+    return /\bcollect(?:s|ing)?\b/i.test(chunk) || /\bcapture(?:s|ing)?\b/i.test(chunk);
+  });
+}
+
+function asksForLoginOrImpersonation(value: string): boolean {
+  const chunks = value.split(/[\n.!?;]+/);
+  return chunks.some((chunk) => {
+    if (IMPERSONATION_TERMS.test(chunk)) return true;
+    if (PAGE_ACTIONS.test(chunk) && LOGIN_TERMS.test(chunk) && PAGE_TERMS.test(chunk)) return true;
+    return PAGE_ACTIONS.test(chunk) && BRAND_LOGIN_TERMS.test(chunk);
+  });
 }
 
 function reject(label: string, reason: string): PolicyDecision {

@@ -1,4 +1,5 @@
 import { HttpError } from "./http";
+import { effectiveExpressionMode } from "./preview";
 import type { CreateExpressionRequest, MaterialInput } from "./types";
 import { validateExternalHttpsUrl } from "./urlPolicy";
 
@@ -19,6 +20,22 @@ export function validateCreateRequest(input: CreateExpressionRequest): CreateExp
 
   if (input.intent.length > MAX_INTENT_LENGTH) {
     throw new HttpError(400, `intent must be ${MAX_INTENT_LENGTH} characters or fewer`);
+  }
+
+  if (input.mode !== undefined && input.mode !== "interactive" && input.mode !== "preview") {
+    throw new HttpError(400, 'mode must be "interactive" or "preview"');
+  }
+
+  if (input.interactive !== undefined && typeof input.interactive !== "boolean") {
+    throw new HttpError(400, "interactive must be a boolean");
+  }
+
+  if (input.mode === "interactive" && input.interactive === false) {
+    throw new HttpError(400, 'mode: "interactive" conflicts with interactive: false');
+  }
+
+  if (input.mode === "preview" && input.interactive === true) {
+    throw new HttpError(400, 'mode: "preview" conflicts with interactive: true');
   }
 
   if (input.result !== undefined) {
@@ -53,6 +70,8 @@ export function validateCreateRequest(input: CreateExpressionRequest): CreateExp
 
   return {
     ...input,
+    mode: effectiveExpressionMode(input),
+    interactive: effectiveExpressionMode(input) === "interactive",
     intent: input.intent.trim(),
     materials: input.materials ?? []
   };

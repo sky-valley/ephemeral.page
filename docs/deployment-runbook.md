@@ -232,6 +232,16 @@ Keep `workers_dev = false` in `wrangler.jsonc` now that custom-domain DNS, certi
 - Live prompt eval covered approval, comparison, report, media preview, acknowledgment, copy inspection, casual poll, and tiny story prompts. Before fixes, the report prompt was overblocked by the secret policy and the media prompt failed material mirroring. After the deploy, all 8 prompts created tailored pages and none fell back to the generic fixture-style page.
 - Full eval note: `docs/evals/2026-05-11-web-expression-live-prompt-eval.md`.
 
+2026-05-14 crawler cleanup:
+
+- Narrowed `/sitemap.xml` to the human overview and focused HTML search pages, leaving agent docs and API descriptors discoverable through links rather than sitemap submission.
+- Added permanent canonical redirects from `www.ephemeral.page` and plain-HTTP apex requests to `https://ephemeral.page`.
+- `npm run check` passed locally with 18 Vitest lifecycle/public-surface tests after typecheck.
+- Deployed directly with `npm run deploy`; Worker version ID `ef209d38-d05e-4c8c-8153-acc1a256f480`.
+- Verified live `/sitemap.xml` contains only HTML page URLs, `https://www.ephemeral.page/sitemap.xml?source=gsc` redirects to the apex URL, and `http://ephemeral.page/humans.html` redirects to HTTPS.
+- Remote smoke passed against `https://ephemeral.page`. Smoke expression id: `expr_THLWfjtJjHctyI3sXy`.
+- Attempted to inspect Cloudflare Bot Management via the logged-in Wrangler OAuth token; the zone lookup worked, but `/zones/:zone_id/bot_management` returned `403 Authentication error`, so Cloudflare Managed robots still needs to be disabled from a dashboard session or a token with Bot Management access.
+
 Add a dated entry here after every bootstrap, deploy, failed deploy, migration, token rotation, or domain cutover.
 
 ## Source Notes

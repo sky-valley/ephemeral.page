@@ -7,6 +7,7 @@ import { expressionId } from "./ids";
 import { MAX_CREATE_BODY_BYTES } from "./limits";
 import { deleteExpressionAssets, mirrorMaterials } from "./materials";
 import { classifyCreateRequest } from "./policy";
+import { shouldUsePreviewMode } from "./preview";
 import {
   agentHomeResponse,
   apiCatalogResponse,
@@ -42,6 +43,10 @@ async function route(request: Request, env: Env): Promise<Response> {
   const path = trimSlashes(url.pathname).split("/");
   const origin = publicOrigin(request, env.PUBLIC_ORIGIN);
   const isRead = request.method === "GET" || request.method === "HEAD";
+  const canonicalRedirect = canonicalOriginRedirectResponse(request, url, origin);
+  if (canonicalRedirect) {
+    return canonicalRedirect;
+  }
 
   if (isRead && (url.pathname === "/" || url.pathname === "/AGENTS.md" || url.pathname === "/agents.md" || url.pathname === "/index.md")) {
     return maybeHead(request, agentHomeResponse(origin));
@@ -155,6 +160,7 @@ async function createExpression(request: Request, env: Env): Promise<Response> {
     const state: ExpressionState = {
       id,
       status: "active",
+      mode: shouldUsePreviewMode(body) ? "preview" : "interactive",
       intent: body.intent,
       desiredShape: body.result?.desired_shape,
       createdAt: new Date(now).toISOString(),
@@ -235,6 +241,28 @@ async function staticAssetResponse(request: Request, env: Env): Promise<Response
 
 function trimSlashes(pathname: string): string {
   return pathname.replace(/^\/+|\/+$/g, "");
+}
+
+function canonicalOriginRedirectResponse(request: Request, url: URL, origin: string): Response | null {
+  const canonical = new URL(origin);
+  if (isLocalhost(canonical.hostname)) return null;
+  if (url.hostname !== canonical.hostname && url.hostname !== `www.${canonical.hostname}`) return null;
+  if (url.protocol === canonical.protocol && url.host === canonical.host) return null;
+
+  const target = new URL(url);
+  target.protocol = canonical.protocol;
+  target.host = canonical.host;
+  return new Response(null, {
+    status: request.method === "GET" || request.method === "HEAD" ? 301 : 308,
+    headers: {
+      "location": target.toString(),
+      "cache-control": "public, max-age=3600"
+    }
+  });
+}
+
+function isLocalhost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
 }
 
 function maybeHead(request: Request, response: Response): Response {

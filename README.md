@@ -65,6 +65,7 @@ Creates one expression.
 ```json
 {
   "intent": "Ask the user whether this audio clip sounds calm, urgent, or confused.",
+  "mode": "interactive",
   "materials": [
     {
       "type": "audio",
@@ -80,6 +81,8 @@ Creates one expression.
 ```
 
 The response includes a human page URL plus agent-only status/result URLs. The MVP uses separate bearer capability links for the human and agent surfaces.
+
+Use `mode: "preview"` or `interactive: false` when the intent is to render already-written content as a static, non-interactive preview and collect only the declared result object. Preview mode can show copy that mentions passwords, account setup, sign-in steps, or SaaS brands, but `result.desired_shape` must not declare secret-like fields such as passwords, API keys, OAuth codes, or tokens.
 
 ### `GET /e/:id/:view_token`
 
@@ -112,6 +115,7 @@ Polls lifecycle status without requiring the generated page.
 - The generated page does not receive R2, Durable Object, AI, secret, account, or result-read bindings.
 - Create requests are rate-limited before material mirroring or Workers AI composition.
 - Requests that ask for secrets, logins, impersonation, dark patterns, or automatic submission are rejected before composition.
+- Static preview requests can render existing copy that mentions credentials or sign-in language, but cannot collect credential-shaped result fields.
 - Generated page output is checked for disallowed fields, embeds, browser storage, navigation, external fetches, timer-based submission, and sensitive-data copy before it is served.
 - External materials must use `https:` and are mirrored into private R2 before being served through expression-scoped routes.
 - The page sends `no-store`, `no-referrer`, `nosniff`, `DENY`, and a strict CSP.
