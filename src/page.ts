@@ -122,12 +122,14 @@ export function terminalPage(state: Pick<ExpressionState, "id" | "status" | "sub
 </body>
 </html>`;
   return new Response(html, {
+    status: 410,
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
+      "x-robots-tag": "noindex, nofollow, noarchive",
       "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'"
     }
   });
@@ -151,6 +153,7 @@ function pageHeaders(nonce: string): Headers {
     "referrer-policy": "no-referrer",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
+    "x-robots-tag": "noindex, nofollow, noarchive",
     "content-security-policy": [
       "default-src 'none'",
       "base-uri 'none'",

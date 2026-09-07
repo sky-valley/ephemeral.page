@@ -358,6 +358,7 @@ I'll send your temporary password separately.`;
 
     expect(page.status).toBe(200);
     expect(page.headers.get("content-security-policy")).toContain("connect-src 'self'");
+    expect(page.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
     expect(html).toContain("window.ephemeral");
     expect(html).toContain("Ask whether the answer should be yes or no.");
     expect(html).toContain("You can close this page and return to what you were doing.");
@@ -398,7 +399,8 @@ I'll send your temporary password separately.`;
     expect(first.status).toBe(200);
     expect(second.status).toBe(409);
     expect(await second.json()).toMatchObject({ error: "Expression already submitted" });
-    expect(pageAfterSubmit.status).toBe(200);
+    expect(pageAfterSubmit.status).toBe(410);
+    expect(pageAfterSubmit.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
     expect(terminalHtml).toContain("Response submitted");
     expect(terminalHtml).toContain("You can close this page and return to what you were doing.");
     expect(terminalHtml).not.toContain("response-form");
@@ -425,7 +427,8 @@ I'll send your temporary password separately.`;
     const submit = await submitResult(data.url, { late: true });
     const result = await SELF.fetch(data.result_url);
 
-    expect(page.status).toBe(200);
+    expect(page.status).toBe(410);
+    expect(page.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
     expect(await page.text()).toContain("Expression expired");
     expect(submit.status).toBe(410);
     expect(await result.json<ResultEnvelope>()).toMatchObject({
